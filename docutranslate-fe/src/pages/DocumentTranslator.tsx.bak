@@ -1,0 +1,633 @@
+import { useState, useRef, useEffect } from "react";
+import { useToast } from "@/hooks/use-toast";
+import { translationService } from "@/lib/services/translation-service";
+import * as pdfjsLib from 'pdfjs-dist';
+
+import '../styles/fonts.css';
+
+// Initialize PDF.js with the worker
+useEffect(() => {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdfjs/pdf.worker.min.js';
+}, []);on from "@/components/Navigation";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Upload, FileText, Download, Languages, Zap } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { useToast } from "@/hooks/use-toast";
+import { translationService } from "@/lib/services/translation-service";
+import * as pdfjsLib from 'pdfjs-dist';
+
+import '../styles/fonts.css';
+
+// Initialize PDF.js worker
+pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdfjs/pdf.worker.min.js';
+
+// Create public/pdfjs directory and copy worker files there
+useEffect(() => {
+  try {
+    const copyWorkerFiles = async () => {
+      const workerData = await fetch('https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js');
+      const workerBlob = await workerData.blob();
+      const workerUrl = URL.createObjectURL(workerBlob);
+      const response = await fetch(workerUrl);
+      const text = await response.text();
+      
+      // Create a download link
+      const element = document.createElement('a');
+      element.setAttribute('href', 'data:text/javascript;charset=utf-8,' + encodeURIComponent(text));
+      element.setAttribute('download', 'pdf.worker.min.js');
+      element.style.display = 'none';
+      document.body.appendChild(element);
+      element.click();
+      document.body.removeChild(element);
+      URL.revokeObjectURL(workerUrl);
+    };
+    copyWorkerFiles();
+  } catch (error) {
+    console.error('Error setting up PDF.js worker:', error);
+  }
+}, []);
+
+import { useState, useRef, useEffect } from "react";
+import { useToast } from "@/hooks/use-toast";
+import { translationService } from "@/lib/services/translation-service";
+import * as pdfjsLib from 'pdfjs-dist';
+
+import '../styles/fonts.css';
+
+// Initialize PDF.js with the worker
+useEffect(() => {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdfjs/pdf.worker.min.js';
+}, []);
+
+const languageFonts = {
+  ta: "'Noto Sans Tamil', 'Bamini', 'Latha', 'Tamil MN', 'Tamil Sangam MN', sans-serif",
+  si: "'Noto Sans Sinhala', 'Iskoola Pota', sans-serif",
+  en: "'Noto Sans', 'Inter', sans-serif",
+};
+
+export default function DocumentTranslator() {
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [sourceLanguage, setSourceLanguage] = useState("");
+  const [targetLanguage, setTargetLanguage] = useState("");
+  const [originalText, setOriginalText] = useState("");
+  const [translatedText, setTranslatedText] = useState("");
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [isPdfLoading, setIsPdfLoading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
+
+  const getLanguageStyle = (languageCode: string): React.CSSProperties => ({
+    fontFamily: languageFonts[languageCode as keyof typeof languageFonts] || languageFonts.en,
+    direction: languageCode === 'ar' ? 'rtl' : 'ltr',
+    fontSize: '1.1rem',
+    lineHeight: '1.8',
+    padding: '1rem'
+  });
+
+  const languages = [
+    { value: "en", label: "English" },
+    { value: "ta", label: "Tamil" },
+    { value: "si", label: "Sinhala" }
+  ];
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    try {
+      const file = event.target.files?.[0];
+      if (!file) {
+        toast({
+          title: "No file selected",
+          description: "Please select a file to upload",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Check file size (max 10MB)
+      const maxSize = 10 * 1024 * 1024; // 10MB in bytes
+      if (file.size > maxSize) {
+        toast({
+          title: "File too large",
+          description: "Please upload a file smaller than 10MB",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Check if it's a supported file type
+      const fileType = file.type.toLowerCase();
+      const fileName = file.name.toLowerCase();
+      const isTextFile = fileType.includes('text/') || fileName.endsWith('.txt');
+      const isPdfFile = fileType === 'application/pdf' || fileName.endsWith('.pdf');
+      const isDocFile = fileType.includes('msword') || 
+                     fileType.includes('wordprocessingml') || 
+                     fileName.endsWith('.doc') || 
+                     fileName.endsWith('.docx');
+
+      if (!isTextFile && !isPdfFile && !isDocFile) {
+        toast({
+          title: "Invalid file type",
+          description: "Please upload a TXT, PDF, or DOC file",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      setSelectedFile(file);
+
+      if (isTextFile) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const content = e.target?.result;
+          if (typeof content === 'string') {
+            setOriginalText(content);
+            toast({
+              title: "File uploaded successfully",
+              description: `${file.name} is ready for translation`
+            });
+          } else {
+            toast({
+              title: "Error processing file",
+              description: "Failed to read file content",
+              variant: "destructive"
+            });
+          }
+        };
+        reader.onerror = () => {
+          toast({
+            title: "Error reading file",
+            description: "Failed to read the text file",
+            variant: "destructive"
+          });
+        };
+        reader.readAsText(file);
+      } else if (isPdfFile) {
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+          try {
+            setIsPdfLoading(true);
+            console.log('Starting PDF processing');
+            const arrayBuffer = e.target?.result;
+            if (!arrayBuffer || !(arrayBuffer instanceof ArrayBuffer)) {
+              throw new Error('Invalid PDF data');
+            }
+            
+            const typedArray = new Uint8Array(arrayBuffer);
+            console.log('PDF data loaded, initializing PDF.js');
+            
+            // Load the PDF file
+            console.log('Loading PDF document');
+            const pdf = await pdfjsLib.getDocument({ data: typedArray }).promise;
+            console.log(`PDF loaded, processing ${pdf.numPages} pages`);
+            
+            let fullText = '';
+            
+            // Extract text from each page
+            for (let i = 1; i <= pdf.numPages; i++) {
+              console.log(`Processing page ${i}/${pdf.numPages}`);
+              const page = await pdf.getPage(i);
+              const textContent = await page.getTextContent();
+              const pageText = textContent.items
+                .map((item: any) => item.str)
+                .join(' ')
+                .trim();
+              
+              if (pageText) {
+                fullText += pageText + '\n\n';
+              }
+            }
+            
+            console.log('PDF text extraction complete', { textLength: fullText.length });
+            setOriginalText(fullText);
+            
+            toast({
+              title: "PDF processed successfully",
+              description: `${file.name} is ready for translation (${pdf.numPages} pages)`
+            });
+          } catch (error) {
+            console.error('PDF processing error:', error);
+            let errorMessage = 'Failed to extract text from the PDF file';
+            
+        if (error instanceof Error) {
+          if (error.message.includes('Invalid PDF')) {
+            errorMessage = 'The file appears to be corrupted or is not a valid PDF';
+          } else if (error.message.includes('worker')) {
+            errorMessage = 'PDF processing service initialization failed. Please try again.';
+          }
+        }
+        setIsPdfLoading(false);            toast({
+              title: "Error processing PDF",
+              description: errorMessage,
+              variant: "destructive"
+            });
+            setOriginalText('');
+            setSelectedFile(null);
+          }
+        };
+        
+        reader.onerror = (error) => {
+          console.error('FileReader error:', error);
+          toast({
+            title: "Error reading PDF",
+            description: "Failed to read the PDF file. The file might be corrupted.",
+            variant: "destructive"
+          });
+          setOriginalText('');
+          setSelectedFile(null);
+        };
+        
+        console.log('Starting PDF file read');
+        reader.readAsArrayBuffer(file);
+      } else if (isDocFile) {
+        setOriginalText("DOC/DOCX processing... This feature will be available soon.");
+        toast({
+          title: "DOC Upload",
+          description: "DOC/DOCX processing support is coming soon. For now, please paste your text directly or use a .txt file.",
+          variant: "default"
+        });
+      }
+    } catch (error) {
+      console.error('File upload error:', error);
+      toast({
+        title: "Upload failed",
+        description: "An error occurred while uploading the file",
+        variant: "destructive"
+      });
+      setSelectedFile(null);
+      setOriginalText("");
+    }
+  };
+
+  const handleTranslate = async () => {
+    console.log('Starting translation...', { originalText, sourceLanguage, targetLanguage });
+    
+    if (!originalText || !sourceLanguage || !targetLanguage) {
+      console.log('Missing required fields:', { originalText: !!originalText, sourceLanguage, targetLanguage });
+      toast({
+        title: "Missing information",
+        description: "Please upload a file and select both languages.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsTranslating(true);
+    try {
+      console.log('Selected languages:', { from: sourceLanguage, to: targetLanguage });
+      
+      // Simulate translation API call
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      const languageLabels = {
+        en: "English",
+        ta: "Tamil",
+        si: "Sinhala"
+      };
+      
+      // For demo purposes, let's add some translated text based on target language
+      let demoTranslation = '';
+      console.log('Starting translation for language:', targetLanguage);
+      
+      if (targetLanguage === 'ta') {
+        demoTranslation = "வணக்கம்! இது ஒரு சோதனை மொழிபெயர்ப்பு. உங்கள் உரை இங்கே தோன்றும்.";
+      } else if (targetLanguage === 'si') {
+        demoTranslation = "ආයුබෝවන්! මෙය පරිවර්තන පරීක්ෂණයකි. ඔබේ පෙළ මෙහි දිස් වනු ඇත.";
+      } else {
+        demoTranslation = originalText;
+      }
+      console.log('Translation generated:', { demoTranslation, length: demoTranslation.length });
+
+      const header = "Translation Results";
+      const fromTo = `${languageLabels[sourceLanguage as keyof typeof languageLabels]} → ${languageLabels[targetLanguage as keyof typeof languageLabels]}`;
+      const separator = "─".repeat(40);
+      
+      const translatedTextContent = `${header}\n[${fromTo}]\n${separator}\n\n${demoTranslation}`;
+      setTranslatedText(translatedTextContent);
+      
+      // Save translation to database
+      try {
+        await translationService.createTranslation({
+          originalText,
+          translatedText: translatedTextContent,
+          sourceLanguage,
+          targetLanguage,
+          fileName: selectedFile?.name,
+          fileType: selectedFile?.type,
+          fileSize: selectedFile?.size,
+        });
+
+        // Add to translation history
+        await translationService.addToHistory({
+          originalText,
+          translatedText: translatedTextContent,
+          sourceLanguage,
+          targetLanguage,
+        });
+        
+        toast({
+          title: "Translation completed",
+          description: "Your document has been successfully translated and saved."
+        });
+      } catch (dbError) {
+        console.error('Database error:', dbError);
+        // Still set the translated text even if database save fails
+        setTranslatedText(translatedTextContent);
+        toast({
+          title: "Translation completed",
+          description: "Translation successful but couldn't save to history.",
+          variant: "default"
+        });
+      }
+    } catch (error) {
+      console.error('Translation error:', error);
+      toast({
+        title: "Translation failed",
+        description: "An error occurred during translation",
+        variant: "destructive"
+      });
+    } finally {
+      setIsTranslating(false);
+    }
+  };
+
+  const handleDownload = () => {
+    if (!translatedText) return;
+
+    try {
+      // Import jsPDF dynamically
+      import('jspdf').then(({ default: JsPDF }) => {
+        const doc = new JsPDF();
+        
+        // Set font size
+        doc.setFontSize(12);
+        
+        // Add title
+        doc.setFontSize(16);
+        doc.text('Translation Results', 20, 20);
+        doc.setFontSize(12);
+        
+        // Add language info
+        const languageLabels = {
+          en: "English",
+          ta: "Tamil",
+          si: "Sinhala"
+        };
+        doc.text(`From: ${languageLabels[sourceLanguage as keyof typeof languageLabels] || sourceLanguage}`, 20, 30);
+        doc.text(`To: ${languageLabels[targetLanguage as keyof typeof languageLabels] || targetLanguage}`, 20, 40);
+        
+        // Add separator line
+        doc.line(20, 45, 190, 45);
+        
+        // Add original text
+        doc.text('Original Text:', 20, 55);
+        const originalLines = doc.splitTextToSize(originalText, 170);
+        doc.text(originalLines, 20, 65);
+        
+        // Add translated text on new page
+        doc.addPage();
+        doc.text('Translated Text:', 20, 20);
+        const translatedLines = doc.splitTextToSize(translatedText, 170);
+        doc.text(translatedLines, 20, 30);
+        
+        // Save the PDF
+        doc.save(`translated_${selectedFile?.name || 'document'}.pdf`);
+        
+        toast({
+          title: "Download complete",
+          description: "Your translated document has been saved as PDF."
+        });
+      }).catch(error => {
+        console.error('Error generating PDF:', error);
+        toast({
+          title: "PDF generation failed",
+          description: "Failed to generate PDF. Downloading as text file instead.",
+          variant: "destructive"
+        });
+        
+        // Fallback to text file download
+        const blob = new Blob([translatedText], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `translated_${selectedFile?.name || 'document.txt'}`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      });
+    } catch (error) {
+      console.error('Download error:', error);
+      toast({
+        title: "Download failed",
+        description: "An error occurred while downloading the file.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-background">
+      <Navigation />
+      
+      <main className="container mx-auto px-6 py-12">
+        <div className="text-center mb-12">
+          <h1 className="text-4xl lg:text-5xl font-bold mb-6 bg-gradient-to-r from-hero-gradient-start to-hero-gradient-end bg-clip-text text-transparent">
+            Document Translator
+          </h1>
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+            Upload your documents and translate them instantly into 50+ languages with AI-powered accuracy.
+          </p>
+        </div>
+
+        <div className="grid lg:grid-cols-2 gap-8 max-w-6xl mx-auto">
+          {/* Upload Section */}
+          <Card className="border-border/50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Upload className="w-5 h-5 text-primary" />
+                Upload Document
+              </CardTitle>
+              <CardDescription>
+                Support for PDF, TXT, and DOC files up to 10MB
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div 
+                className="border-2 border-dashed border-border rounded-lg p-8 text-center cursor-pointer hover:border-primary/50 transition-colors"
+                onClick={() => fileInputRef.current?.click()}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.currentTarget.classList.add('border-primary');
+                }}
+                onDragLeave={(e) => {
+                  e.preventDefault();
+                  e.currentTarget.classList.remove('border-primary');
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  const file = e.dataTransfer.files[0];
+                  if (file) {
+                    handleFileUpload({ target: { files: e.dataTransfer.files } } as React.ChangeEvent<HTMLInputElement>);
+                  }
+                  e.currentTarget.classList.remove('border-primary');
+                }}
+              >
+                {isPdfLoading ? (
+                  <div className="text-center">
+                    <Zap className="w-12 h-12 text-muted-foreground mx-auto mb-4 animate-spin" />
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Processing PDF...
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Click to upload or drag and drop
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      TXT, PDF, and DOC files supported
+                    </p>
+                  </>
+                )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".txt,.pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+              </div>
+              
+              {selectedFile && (
+                <div className="flex items-center gap-3 p-3 bg-secondary/50 rounded-lg">
+                  <FileText className="w-5 h-5 text-primary" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">{selectedFile.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {(selectedFile.size / 1024).toFixed(1)} KB
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">From Language</label>
+                  <Select value={sourceLanguage} onValueChange={setSourceLanguage}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select source" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {languages.map((lang) => (
+                        <SelectItem key={lang.value} value={lang.value}>
+                          {lang.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">To Language</label>
+                  <Select value={targetLanguage} onValueChange={setTargetLanguage}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select target" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {languages.map((lang) => (
+                        <SelectItem key={lang.value} value={lang.value}>
+                          {lang.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <Button 
+                onClick={handleTranslate} 
+                disabled={!originalText || !sourceLanguage || !targetLanguage || isTranslating}
+                className="w-full"
+                size="lg"
+              >
+                {isTranslating ? (
+                  <>
+                    <Zap className="w-4 h-4 mr-2 animate-spin" />
+                    Translating...
+                  </>
+                ) : (
+                  <>
+                    <Languages className="w-4 h-4 mr-2" />
+                    Translate Document
+                  </>
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Preview Section */}
+          <Card className="border-border/50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="w-5 h-5 text-primary" />
+                Translation Preview
+              </CardTitle>
+              <CardDescription>
+                Review your translated document before downloading
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-4">
+                {originalText && (
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Original Text</label>
+                    <Textarea
+                      value={originalText}
+                      readOnly
+                      style={getLanguageStyle(sourceLanguage)}
+                      className="min-h-[120px] resize-none focus:outline-none rounded-lg border-2"
+                      placeholder="Your document content will appear here..."
+                    />
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Translated Text</label>
+                  <Textarea
+                    value={translatedText}
+                    readOnly
+                    style={getLanguageStyle(targetLanguage)}
+                    className="min-h-[200px] resize-none focus:outline-none rounded-lg border-2 bg-white dark:bg-secondary/10 whitespace-pre-wrap"
+                    placeholder="Translation will appear here..."
+                  />
+                </div>
+              </div>
+
+              {translatedText && (
+                <Button 
+                  onClick={handleDownload}
+                  variant="secondary"
+                  className="w-full"
+                  size="lg"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Download Translation
+                </Button>
+              )}
+
+              {!originalText && !translatedText && (
+                <div className="text-center py-12 text-muted-foreground">
+                  <FileText className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                  <p>Upload a document to see the translation preview</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </main>
+    </div>
+  );
+}

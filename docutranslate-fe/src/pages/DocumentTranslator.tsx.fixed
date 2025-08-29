@@ -1,0 +1,21 @@
+import Navigation from "@/components/Navigation";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Upload, FileText, Download, Languages, Zap } from "lucide-react";
+import { useState, useRef } from "react";
+import { useToast } from "@/hooks/use-toast";
+import { translationService } from "@/lib/services/translation-service";
+import * as pdfjsLib from 'pdfjs-dist';
+
+import '../styles/fonts.css';
+
+// Initialize PDF.js with the worker
+pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdfjs/pdf.worker.min.js';
+
+const languageFonts = {
+  ta: "'Noto Sans Tamil', 'Bamini', 'Latha', 'Tamil MN', 'Tamil Sangam MN', sans-serif",
+  si: "'Noto Sans Sinhala', 'Iskoola Pota', sans-serif",
+  en: "'Noto Sans', 'Inter', sans-serif",
+};

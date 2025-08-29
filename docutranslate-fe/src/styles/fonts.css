@@ -1,0 +1,8 @@
+/* Import Google Fonts for different languages */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;700&family=Noto+Sans+Tamil:wght@400;500;700&family=Noto+Sans+Sinhala:wght@400;500;700&display=swap');
+
+/* Define custom font faces if needed */
+@font-face {
+  font-family: 'Bamini';
+  src: url('/fonts/Bamini.ttf') format('truetype');
+}

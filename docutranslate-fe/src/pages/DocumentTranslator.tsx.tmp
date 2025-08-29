@@ -1,0 +1,26 @@
+import { useState, useRef, useEffect } from "react";
+import { useToast } from "@/hooks/use-toast";
+import { translationService } from "@/lib/services/translation-service";
+import * as pdfjsLib from 'pdfjs-dist';
+
+import '../styles/fonts.css';
+
+// Initialize PDF.js with the worker
+pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdfjs/pdf.worker.min.js';
+
+const languageFonts = {
+  ta: "'Noto Sans Tamil', 'Bamini', 'Latha', 'Tamil MN', 'Tamil Sangam MN', sans-serif",
+  si: "'Noto Sans Sinhala', 'Iskoola Pota', sans-serif",
+  en: "'Noto Sans', 'Inter', sans-serif",
+};
+
+export default function DocumentTranslator() {
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [sourceLanguage, setSourceLanguage] = useState("");
+  const [targetLanguage, setTargetLanguage] = useState("");
+  const [originalText, setOriginalText] = useState("");
+  const [translatedText, setTranslatedText] = useState("");
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [isPdfLoading, setIsPdfLoading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();

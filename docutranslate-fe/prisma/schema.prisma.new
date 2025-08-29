@@ -1,0 +1,41 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Translation {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  originalText    String
+  translatedText  String
+  sourceLanguage  String
+  targetLanguage  String
+  fileName        String?
+  fileType        String?
+  fileSize        Int?    // in bytes
+  userId          String? // for future authentication
+  
+  @@index([userId])
+}
+
+model TranslationHistory {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  
+  originalText    String
+  translatedText  String
+  sourceLanguage  String
+  targetLanguage  String
+  userId          String? // for future authentication
+  
+  @@index([userId])
+}
