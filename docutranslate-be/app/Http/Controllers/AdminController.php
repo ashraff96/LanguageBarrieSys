@@ -65,8 +65,7 @@ class AdminController extends Controller
     }
 
     /**
-     * Get database performance statistics
-     */
+     * Get database performance statistics */
     public function getDatabaseStats(): JsonResponse
     {
         try {
@@ -226,10 +225,14 @@ class AdminController extends Controller
         $activities = [];
 
         try {
-            // Get recent file uploads (increased limit for more activity)
+            // Force fresh database queries by clearing any potential query cache
+            \DB::statement('PRAGMA cache_size = 0');
+            
+            // Get recent file uploads (last 24 hours for more current data)
             $recentFiles = File::with('user:id,name')
+                ->where('created_at', '>=', now()->subHours(24))
                 ->orderBy('created_at', 'desc')
-                ->limit(10) // Increased from 5 to 10
+                ->limit(15) // Increased limit
                 ->get();
 
             foreach ($recentFiles as $file) {
@@ -242,15 +245,17 @@ class AdminController extends Controller
                         'time' => $file->created_at->diffForHumans(),
                         'status' => $file->status,
                         'type' => 'file_upload',
-                        'timestamp' => $file->created_at, // Add actual timestamp for sorting
+                        'timestamp' => $file->created_at,
+                        'created_at_iso' => $file->created_at->toISOString(),
                     ];
                 }
             }
 
-            // Get recent translations (increased limit for more activity)
+            // Get recent translations (last 24 hours for more current data)
             $recentTranslations = Translation::with('user:id,name')
+                ->where('created_at', '>=', now()->subHours(24))
                 ->orderBy('created_at', 'desc')
-                ->limit(10) // Increased from 5 to 10
+                ->limit(15) // Increased limit
                 ->get();
 
             foreach ($recentTranslations as $translation) {
@@ -263,7 +268,8 @@ class AdminController extends Controller
                         'time' => $translation->created_at->diffForHumans(),
                         'status' => 'completed',
                         'type' => 'translation',
-                        'timestamp' => $translation->created_at, // Add actual timestamp for sorting
+                        'timestamp' => $translation->created_at,
+                        'created_at_iso' => $translation->created_at->toISOString(),
                     ];
                 }
             }
@@ -273,11 +279,14 @@ class AdminController extends Controller
                 return $b['timestamp']->timestamp <=> $a['timestamp']->timestamp;
             });
 
-            // Remove timestamp field from final output and return top 15
-            $activities = array_slice($activities, 0, 15); // Increased from 10 to 15
+            // Remove timestamp field from final output and return top 20
+            $activities = array_slice($activities, 0, 20); // Increased from 15 to 20
             foreach ($activities as &$activity) {
                 unset($activity['timestamp']);
             }
+
+            // Log the activity count for debugging
+            Log::info('Recent activity count: ' . count($activities));
 
             return $activities;
         } catch (\Exception $e) {

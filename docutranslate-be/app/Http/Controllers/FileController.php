@@ -12,13 +12,6 @@ use Illuminate\Support\Facades\Validator;
 
 class FileController extends Controller
 {
-    protected $systemLogService;
-
-    public function __construct(SystemLogService $systemLogService)
-    {
-        $this->systemLogService = $systemLogService;
-    }
-
     /**
      * Upload a new file
      */
@@ -70,9 +63,8 @@ class FileController extends Controller
             ]);
 
             // Log the upload
-            $this->systemLogService->log(
-                'info',
-                'file_uploaded',
+            SystemLogService::info(
+                'file_management',
                 'File uploaded successfully',
                 ['file_id' => $fileRecord->id, 'filename' => $originalName],
                 $request
@@ -217,11 +209,11 @@ class FileController extends Controller
         $file->update($request->only(['status', 'translation_accuracy']));
 
         // Log the status change
-        $this->systemLogService->log(
-            'file_status_updated',
+        SystemLogService::info(
+            'file_management',
             "File status updated from {$oldStatus} to {$file->status}",
-            Auth::user(),
-            ['file_id' => $file->id, 'old_status' => $oldStatus, 'new_status' => $file->status]
+            ['file_id' => $file->id, 'old_status' => $oldStatus, 'new_status' => $file->status],
+            $request
         );
 
         return response()->json([
@@ -251,11 +243,11 @@ class FileController extends Controller
             }
 
             // Log the deletion
-            $this->systemLogService->log(
-                'file_deleted',
+            SystemLogService::info(
+                'file_management',
                 'File deleted successfully',
-                Auth::user(),
-                ['file_id' => $file->id, 'filename' => $file->original_name]
+                ['file_id' => $file->id, 'filename' => $file->original_name],
+                $request
             );
 
             // Delete database record
@@ -296,11 +288,11 @@ class FileController extends Controller
         }
 
         // Log the download
-        $this->systemLogService->log(
-            'file_downloaded',
+        SystemLogService::info(
+            'file_management',
             'File downloaded',
-            Auth::user(),
-            ['file_id' => $file->id, 'filename' => $file->original_name]
+            ['file_id' => $file->id, 'filename' => $file->original_name],
+            $request
         );
 
         return Storage::disk('public')->download(

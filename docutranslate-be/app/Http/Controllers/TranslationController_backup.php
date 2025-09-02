@@ -281,7 +281,7 @@ class TranslationController extends Controller
 
     /**
      * Perform the actual translation
-     * Enhanced mock translation with better text handling for document translation
+     * In a real application, this would call an external translation service like Google Translate, AWS Translate, etc.
      */
     private function performTranslation(string $text, string $sourceLanguage, string $targetLanguage): string
     {
@@ -292,6 +292,7 @@ class TranslationController extends Controller
             'si' => 'Sinhala'
         ];
 
+        $sourceLanguageName = $languageNames[$sourceLanguage] ?? $sourceLanguage;
         $targetLanguageName = $languageNames[$targetLanguage] ?? $targetLanguage;
 
         // Mock translation logic - in production, integrate with Google Translate API, AWS Translate, etc.
@@ -299,30 +300,9 @@ class TranslationController extends Controller
             return $text; // Same language, return original
         }
 
-        // Enhanced translations with more comprehensive word mappings for document content
+        // Sample translations for demonstration
         $translations = [
             'en_ta' => [
-                'Artificial Intelligence' => 'செயற்கை நுண்ணறிவு',
-                'Technology' => 'தொழில்நுட்பம்',
-                'Computer' => 'கணினி',
-                'Future' => 'எதிர்காலம்',
-                'Introduction' => 'அறிமுகம்',
-                'Humanity' => 'மனிதகுலம்',
-                'Science' => 'அறிவியல்',
-                'Fiction' => 'கற்பனை',
-                'Medical' => 'மருத்துவ',
-                'Advanced' => 'மேம்பட்ட',
-                'Applications' => 'பயன்பாடுகள்',
-                'Voice' => 'குரல்',
-                'Assistant' => 'உதவியாளர்',
-                'Assistants' => 'உதவியாளர்கள்',
-                'Recommendation' => 'பரிந்துரை',
-                'Systems' => 'அமைப்புகள்',
-                'Century' => 'நூற்றாண்டு',
-                'Transforming' => 'மாற்றுகிறது',
-                'Everyday' => 'அன்றாடம்',
-                'Life' => 'வாழ்க்கை',
-                'Powering' => 'இயக்குகிறது',
                 'Hello' => 'வணக்கம்',
                 'Thank you' => 'நன்றி',
                 'Good morning' => 'காலை வணக்கம்',
@@ -330,47 +310,9 @@ class TranslationController extends Controller
                 'Welcome' => 'வரவேற்கிறோம்',
                 'Good' => 'நல்லது',
                 'Yes' => 'ஆம்',
-                'No' => 'இல்லை',
-                'the' => '',
-                'and' => 'மற்றும்',
-                'of' => 'இன்',
-                'to' => 'க்கு',
-                'from' => 'இருந்து',
-                'has' => 'உள்ளது',
-                'become' => 'ஆகிவிட்டது',
-                'one' => 'ஒன்று',
-                'most' => 'மிகவும்',
-                'significant' => 'குறிப்பிடத்தக்க',
-                'advancements' => 'முன்னேற்றங்கள்',
-                'technological' => 'தொழில்நுட்ப',
-                'Once' => 'ஒரு காலத்தில்',
-                'confined' => 'அடைத்து',
-                'realm' => 'பகுதி',
-                'now' => 'இப்போது',
-                'permeates' => 'ஊடுருவுகிறது'
+                'No' => 'இல்லை'
             ],
             'en_si' => [
-                'Artificial Intelligence' => 'කෘත්‍රිම බුද්ධිය',
-                'Technology' => 'තාක්ෂණය',
-                'Computer' => 'පරිගණකය',
-                'Future' => 'අනාගතය',
-                'Introduction' => 'හැඳින්වීම',
-                'Humanity' => 'මානවත්වය',
-                'Science' => 'විද්‍යාව',
-                'Fiction' => 'ප්‍රබන්ධ',
-                'Medical' => 'වෛද්‍ය',
-                'Advanced' => 'දියුණු',
-                'Applications' => 'යෙදුම්',
-                'Voice' => 'කටහඬ',
-                'Assistant' => 'සහායක',
-                'Assistants' => 'සහායකයන්',
-                'Recommendation' => 'නිර්දේශ',
-                'Systems' => 'පද්ධති',
-                'Century' => 'සියවස',
-                'Transforming' => 'පරිවර්තනය කරමින්',
-                'Everyday' => 'එදිනෙදා',
-                'Life' => 'ජීවිතය',
-                'Powering' => 'බලගන්වනවා',
                 'Hello' => 'ආයුබෝවන්',
                 'Thank you' => 'ස්තුතියි',
                 'Good morning' => 'සුභ උදෑසනක්',
@@ -378,37 +320,17 @@ class TranslationController extends Controller
                 'Welcome' => 'සාදරයෙන් පිළිගනිමු',
                 'Good' => 'හොඳයි',
                 'Yes' => 'ඔව්',
-                'No' => 'නැහැ',
-                'the' => '',
-                'and' => 'සහ',
-                'of' => 'ගේ',
-                'to' => 'ට',
-                'from' => 'සිට',
-                'has' => 'ඇත',
-                'become' => 'බවට පත්ව',
-                'one' => 'එක',
-                'most' => 'වඩාත්ම',
-                'significant' => 'වැදගත්',
-                'advancements' => 'දියුණුව',
-                'technological' => 'තාක්ෂණික',
-                'Once' => 'වරක්',
-                'confined' => 'සීමා කර',
-                'realm' => 'ක්ෂේත්‍රය',
-                'now' => 'දැන්',
-                'permeates' => 'විහිදේ'
+                'No' => 'නැහැ'
             ],
             'ta_en' => [
                 'வணக்கம்' => 'Hello',
                 'நன்றி' => 'Thank you',
-                'காலை வணක्कम्' => 'Good morning',
-                'எப்படி இருக்கிறீர्கळ்?' => 'How are you?',
-                'வरवेற்கிறோம்' => 'Welcome',
-                'நல্லது' => 'Good',
+                'காலை வணක்கம்' => 'Good morning',
+                'எப்படி இருக்கிறீர்கள்?' => 'How are you?',
+                'வரவேற்கிறோம்' => 'Welcome',
+                'நல்லது' => 'Good',
                 'ஆம்' => 'Yes',
-                'இল্লை' => 'No',
-                'செயற্கै நুण্ணறিवु' => 'Artificial Intelligence',
-                'தொழিল্நুட্পम்' => 'Technology',
-                'کणিনি' => 'Computer'
+                'இல்லை' => 'No'
             ],
             'si_en' => [
                 'ආයුබෝවන්' => 'Hello',
@@ -418,46 +340,32 @@ class TranslationController extends Controller
                 'සාදරයෙන් පිළිගනිමු' => 'Welcome',
                 'හොඳයි' => 'Good',
                 'ඔව්' => 'Yes',
-                'නැහැ' => 'No',
-                'කෘත්‍රිම බුද්ධිය' => 'Artificial Intelligence',
-                'තාක්ෂණය' => 'Technology',
-                'පරිගණකය' => 'Computer'
-            ],
-            'ta_si' => [
-                'வணක்कম्' => 'ආයුබෝවන්',
-                'நन्றि' => 'ස්තුතියි',
-                'செयற्کै நুण्णறिवु' => 'කෘත්‍රිම බුද්ධිය',
-                'தொжिल्நুट्पम्' => 'තාක්ෂණය'
-            ],
-            'si_ta' => [
-                'ආයුබෝවන්' => 'வணක्कम्',
-                'ස්තුතියි' => 'நன्றি',
-                'කෘත්‍රිම බුද්ධිය' => 'செयற्কै நுण्णறिवु',
-                'තාක්ෂණය' => 'தொжيल्நुট्पम्'
+                'නැහැ' => 'No'
             ]
         ];
 
         $translationKey = $sourceLanguage . '_' . $targetLanguage;
-        $translatedText = $text;
         
-        // Apply word-by-word translations if available
+        // Check if we have predefined translations
         if (isset($translations[$translationKey])) {
             $translationMap = $translations[$translationKey];
             
-            // Sort by length (longest first) to avoid partial replacements
-            uksort($translationMap, function($a, $b) {
-                return strlen($b) - strlen($a);
-            });
-            
+            // Try to find exact matches first
             foreach ($translationMap as $source => $target) {
-                if (!empty($target)) { // Only replace if target is not empty
-                    $translatedText = str_ireplace($source, $target, $translatedText);
+                if (stripos($text, $source) !== false) {
+                    $text = str_ireplace($source, $target, $text);
                 }
             }
         }
 
-        // Add language prefix to indicate this is a mock translation
-        return "[{$targetLanguageName} Translation] " . $translatedText;
+        // For longer texts, add a translation prefix to indicate the target language
+        if (strlen($text) > 100) {
+            $prefix = "[$targetLanguageName Translation] ";
+            return $prefix . $text;
+        }
+
+        // If no specific translation found, return with language indicator
+        return "[$targetLanguageName] " . $text;
     }
 
     /**
@@ -687,4 +595,4 @@ class TranslationController extends Controller
         
         return round($bytes / pow(1024, $factor), 2) . ' ' . $units[$factor];
     }
-}
+} 
