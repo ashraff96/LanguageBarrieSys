@@ -271,16 +271,22 @@ const DocumentTranslator = () => {
             });
 
             if (!translationResponse.ok) {
-              throw new Error(`Translation failed: ${translationResponse.statusText}`);
+              const errorText = await translationResponse.text();
+              console.error('Translation API Error:', errorText);
+              throw new Error(`Translation failed: ${translationResponse.statusText} - ${errorText}`);
             }
 
             const translationData = await translationResponse.json();
+            console.log('Translation API Response:', translationData);
+            
             const translatedText = translationData.data?.translated_text || translationData.translated_text;
 
             if (!translatedText) {
+              console.error('No translated text in response:', translationData);
               throw new Error('No translated text received from API');
             }
 
+            console.log('Setting translated text:', translatedText);
             setTranslatedText(translatedText);
 
             // Create translation record

@@ -343,9 +343,10 @@ class ApiService {
 
   // Admin methods
   async getDashboardStats(): Promise<DashboardStats> {
-    // Add cache-busting timestamp
+    // Add aggressive cache-busting with timestamp and random number
     const timestamp = new Date().getTime();
-    const response = await this.request<DashboardStats>(`/admin/dashboard-stats?t=${timestamp}`);
+    const random = Math.random().toString(36).substring(7);
+    const response = await this.request<DashboardStats>(`/admin/dashboard-stats?t=${timestamp}&r=${random}&nocache=1`);
     return response.data;
   }
 

@@ -28,9 +28,7 @@ const SignIn = () => {
       });
       return;
     }
-
-    setIsLoading(true);
-    
+    setIsLoading(true);    
     try {
       const success = await login(email, password);
       

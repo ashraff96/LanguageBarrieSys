@@ -86,7 +86,7 @@ const LoginPage = () => {
               <div className="bg-blue-50 rounded-lg p-3 text-sm text-blue-800">
                 <strong>Demo Credentials:</strong><br />
                 Email: admin@docutranslate.com<br />
-                Password: password
+                Password: admin
               </div>
               <Button
                 type="submit"
