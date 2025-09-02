@@ -140,7 +140,7 @@ const SignIn = () => {
             </p>
             <p className="text-xs text-gray-500 mt-1">
               Email: admin@docutranslate.com<br />
-              Password: password
+              Password: admin
             </p>
           </div>
         </CardContent>

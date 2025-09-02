@@ -1,5 +1,5 @@
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { Users, Database, FileText, Settings, LogOut, User, LayoutDashboard } from "lucide-react";
+import { Users, Database, FileText, Settings, LogOut, User, LayoutDashboard, Languages, Activity } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
@@ -60,6 +60,15 @@ export const AdminSidebar = () => {
           
           <SidebarMenuItem>
             <SidebarMenuButton asChild>
+              <a href="/admin/translations">
+                <Languages className="w-4 h-4" />
+                Translations
+              </a>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild>
               <a href="/admin/files">
                 <FileText className="w-4 h-4" />
                 Files
@@ -72,15 +81,6 @@ export const AdminSidebar = () => {
               <a href="/admin/database">
                 <Database className="w-4 h-4" />
                 Database
-              </a>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild>
-              <a href="/admin/translations">
-                <FileText className="w-4 h-4" />
-                Translations
               </a>
             </SidebarMenuButton>
           </SidebarMenuItem>

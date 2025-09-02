@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { usePageNavigation } from "@/hooks/use-page-navigation";
+import { getLanguageStyle, getLanguageClassName, getLanguageName } from "@/lib/language-utils";
 import { theme } from "@/lib/theme";
 import { 
   Mic, 
@@ -16,7 +18,9 @@ import {
   Play, 
   FileAudio,
   AudioWaveform,
-  Sparkles
+  Sparkles,
+  Home,
+  ArrowLeft
 } from "lucide-react";
 
 const VoiceTranslator = () => {
@@ -26,6 +30,7 @@ const VoiceTranslator = () => {
   const [result, setResult] = useState<VoiceResult | null>(null);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+  const { navigateToHome, navigateAfterTaskCompletion } = usePageNavigation();
 
   const handleSubmit = async () => {
     if (!file) {
@@ -46,8 +51,11 @@ const VoiceTranslator = () => {
       setResult(data);
       toast({ 
         title: "✨ Translation Complete!", 
-        description: "Your voice has been successfully transcribed and translated." 
+        description: "Your voice has been successfully transcribed and translated. Redirecting to home in 3 seconds..." 
       });
+      
+      // Auto-redirect after successful translation
+      navigateAfterTaskCompletion('voice-translation');
     } catch (e: any) {
       toast({ 
         title: "Translation Failed", 
@@ -60,8 +68,41 @@ const VoiceTranslator = () => {
   };
 
   return (
-    <div className={`${theme.layout.page} p-6`}>
-      <div className="max-w-4xl mx-auto space-y-8">
+    <div className={`min-h-screen ${theme.layout.page}`}>
+      {/* Navigation Header */}
+      <div className="bg-white/80 backdrop-blur-sm border-b border-blue-200 sticky top-0 z-10">
+        <div className="container mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={navigateToHome}
+                className="text-blue-700 hover:text-blue-900 hover:bg-blue-50"
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to Home
+              </Button>
+              <div className="text-sm text-blue-600">
+                <span className="font-medium">Voice Translator</span>
+                <span className="mx-2">•</span>
+                <span>Transform speech into text and translate instantly</span>
+              </div>
+            </div>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={navigateToHome}
+              className="text-blue-700 border-blue-200 hover:bg-blue-50"
+            >
+              <Home className="w-4 h-4 mr-2" />
+              Dashboard
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-4xl mx-auto space-y-8 p-6">
         {/* Header Section */}
         <div className="text-center space-y-4">
           <div className="flex items-center justify-center gap-3 mb-4">
@@ -80,7 +121,7 @@ const VoiceTranslator = () => {
           
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
             <Sparkles className="w-4 h-4" />
-            Powered by Advanced AI Technology
+            Powered by Education Depatment
           </div>
         </div>
 
@@ -133,17 +174,8 @@ const VoiceTranslator = () => {
                   <SelectContent>
                     <SelectItem value="auto">Auto-detect</SelectItem>
                     <SelectItem value="en">English</SelectItem>
-                    <SelectItem value="hi">Hindi</SelectItem>
-                    <SelectItem value="es">Spanish</SelectItem>
-                    <SelectItem value="fr">French</SelectItem>
-                    <SelectItem value="de">German</SelectItem>
-                    <SelectItem value="it">Italian</SelectItem>
-                    <SelectItem value="pt">Portuguese</SelectItem>
-                    <SelectItem value="ru">Russian</SelectItem>
-                    <SelectItem value="ja">Japanese</SelectItem>
-                    <SelectItem value="ko">Korean</SelectItem>
-                    <SelectItem value="zh">Chinese</SelectItem>
-                    <SelectItem value="ar">Arabic</SelectItem>
+                    <SelectItem value="ta">Tamil (தமிழ்)</SelectItem>
+                    <SelectItem value="si">Sinhala (සිංහල)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -158,17 +190,8 @@ const VoiceTranslator = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="en">English</SelectItem>
-                    <SelectItem value="hi">Hindi</SelectItem>
-                    <SelectItem value="es">Spanish</SelectItem>
-                    <SelectItem value="fr">French</SelectItem>
-                    <SelectItem value="de">German</SelectItem>
-                    <SelectItem value="it">Italian</SelectItem>
-                    <SelectItem value="pt">Portuguese</SelectItem>
-                    <SelectItem value="ru">Russian</SelectItem>
-                    <SelectItem value="ja">Japanese</SelectItem>
-                    <SelectItem value="ko">Korean</SelectItem>
-                    <SelectItem value="zh">Chinese</SelectItem>
-                    <SelectItem value="ar">Arabic</SelectItem>
+                    <SelectItem value="ta">Tamil (தமிழ்)</SelectItem>
+                    <SelectItem value="si">Sinhala (සිංහල)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -243,13 +266,16 @@ const VoiceTranslator = () => {
               </CardHeader>
               <CardContent className="pt-6">
                 <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                  <p className="text-blue-900 text-lg leading-relaxed">
+                  <p 
+                    className={`text-blue-900 text-lg leading-relaxed ${getLanguageClassName(target)}`}
+                    style={getLanguageStyle(target)}
+                  >
                     {result.translation}
                   </p>
                 </div>
                 <div className="flex justify-between items-center mt-4">
                   <div className="text-sm text-blue-600">
-                    Translated to: <span className="font-medium">{target.toUpperCase()}</span>
+                    Translated to: <span className="font-medium">{getLanguageName(target)}</span>
                   </div>
                   <div className="flex gap-2">
                     <Button
@@ -269,6 +295,40 @@ const VoiceTranslator = () => {
                       Download
                     </Button>
                   </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Action Buttons after Translation */}
+            <Card className={`${theme.components.card} border-purple-200`}>
+              <CardContent className="pt-6">
+                <div className="text-center space-y-4">
+                  <h3 className="text-lg font-semibold text-purple-800">What would you like to do next?</h3>
+                  <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                    <Button
+                      onClick={() => {
+                        setResult(null);
+                        setFile(null);
+                        setSource("auto");
+                        setTarget("en");
+                      }}
+                      className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-6 py-2"
+                    >
+                      <Mic className="w-4 h-4 mr-2" />
+                      New Translation
+                    </Button>
+                    <Button
+                      onClick={navigateToHome}
+                      variant="outline"
+                      className="text-blue-700 border-blue-300 hover:bg-blue-50 px-6 py-2"
+                    >
+                      <Home className="w-4 h-4 mr-2" />
+                      Back to Dashboard
+                    </Button>
+                  </div>
+                  <p className="text-sm text-gray-600">
+                    Your translation will be saved to your history automatically.
+                  </p>
                 </div>
               </CardContent>
             </Card>

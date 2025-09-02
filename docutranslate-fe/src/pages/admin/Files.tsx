@@ -37,6 +37,7 @@ import {
   Upload,
   BarChart3,
   HardDrive,
+  Languages,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { fileUploadService, UploadedFile } from "@/lib/services/file-upload-service";
@@ -295,6 +296,7 @@ export default function Files() {
                 <TableHead>File</TableHead>
                 <TableHead>Languages</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Translations</TableHead>
                 <TableHead>Accuracy</TableHead>
                 <TableHead>Size</TableHead>
                 <TableHead>Uploaded</TableHead>
@@ -321,6 +323,13 @@ export default function Files() {
                     </div>
                   </TableCell>
                   <TableCell>{getStatusBadge(file.status)}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Languages className="h-4 w-4 text-blue-500" />
+                      <span className="font-medium">{(file as any).translations?.length || 0}</span>
+                      <span className="text-muted-foreground text-sm">translations</span>
+                    </div>
+                  </TableCell>
                   <TableCell>
                     {file.translation_accuracy ? (
                       <div className="flex items-center gap-2">

@@ -13,6 +13,7 @@ class Translation extends Model
 
     protected $fillable = [
         'user_id',
+        'file_id',
         'original_text',
         'translated_text',
         'source_language',
@@ -36,6 +37,14 @@ class Translation extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Get the file associated with the translation.
+     */
+    public function file(): BelongsTo
+    {
+        return $this->belongsTo(File::class);
     }
 
     /**

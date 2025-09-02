@@ -51,7 +51,13 @@ class FileUploadService {
 
       if (!response.ok) {
         const text = await response.text();
-        throw new Error(`Upload failed: ${response.statusText}${text ? ` - ${text}` : ''}`);
+        console.error('Upload failed:', {
+          status: response.status,
+          statusText: response.statusText,
+          response: text,
+          token: apiService.getToken() ? 'Present' : 'Missing'
+        });
+        throw new Error(`Upload failed (${response.status}): ${response.statusText}${text ? ` - ${text}` : ''}`);
       }
 
       const result = await response.json();

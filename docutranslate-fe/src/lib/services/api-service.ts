@@ -62,6 +62,7 @@ interface DashboardStats {
   total_storage_used: string;
   recent_activity: any[];
   system_status: any;
+  last_updated?: string;
 }
 
 interface DatabaseStats {
@@ -92,6 +93,9 @@ interface AdminTranslationStats {
   processing_translations: number;
   failed_translations: number;
   total_storage_used?: string;
+  languages_used?: number;
+  success_rate?: number;
+  recent_activity?: any[];
 }
 
 // New interfaces for voice/practice
@@ -297,6 +301,21 @@ class ApiService {
     return response.data;
   }
 
+  async translateDocument(payload: {
+    text: string;
+    source_language: string;
+    target_language: string;
+    file_name?: string;
+    file_type?: string;
+    file_size?: number;
+  }): Promise<{ translated_text: string; translation_id: number; character_count?: number; word_count?: number }> {
+    const response = await this.request<{ translated_text: string; translation_id: number; character_count?: number; word_count?: number }>('/translations/translate', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    return response.data;
+  }
+
   async getTranslationStats(): Promise<{
     total_translations: number;
     completed_translations: number;
@@ -324,7 +343,9 @@ class ApiService {
 
   // Admin methods
   async getDashboardStats(): Promise<DashboardStats> {
-    const response = await this.request<DashboardStats>('/admin/dashboard-stats');
+    // Add cache-busting timestamp
+    const timestamp = new Date().getTime();
+    const response = await this.request<DashboardStats>(`/admin/dashboard-stats?t=${timestamp}`);
     return response.data;
   }
 
@@ -423,7 +444,9 @@ class ApiService {
   }
 
   async getAdminTranslationStats(): Promise<AdminTranslationStats> {
-    const response = await this.request<AdminTranslationStats>('/admin/translations/stats');
+    // Add cache-busting parameter to ensure fresh data
+    const timestamp = Date.now();
+    const response = await this.request<AdminTranslationStats>(`/admin/translations/stats?_t=${timestamp}`);
     return (response as any).data || response.data;
   }
 
@@ -435,6 +458,50 @@ class ApiService {
       });
     }
     const response = await this.request<{ data: any[]; total: number; current_page: number; last_page: number }>(`/admin/translations/history?${queryParams.toString()}`);
+    return response.data;
+  }
+
+  // Database management
+  async createDatabaseBackup(): Promise<{ backup_path: string; size: string }> {
+    const response = await this.request<{ backup_path: string; size: string }>('/admin/database/backup', {
+      method: 'POST'
+    });
+    return response.data;
+  }
+
+  async optimizeDatabase(): Promise<{ message: string }> {
+    const response = await this.request<{ message: string }>('/admin/database/optimize', {
+      method: 'POST'
+    });
+    return response.data;
+  }
+
+  async cleanupDatabase(): Promise<{ cleanup_results: any }> {
+    const response = await this.request<{ cleanup_results: any }>('/admin/database/cleanup', {
+      method: 'POST'
+    });
+    return response.data;
+  }
+
+  // Settings management
+  async getAdminSettings(): Promise<any> {
+    const response = await this.request<any>('/admin/settings');
+    return response.data;
+  }
+
+  async updateAdminSettings(category: string, settings: any): Promise<{ message: string }> {
+    const response = await this.request<{ message: string }>('/admin/settings', {
+      method: 'POST',
+      body: JSON.stringify({ category, settings })
+    });
+    return response.data;
+  }
+
+  // System management
+  async clearCache(): Promise<{ message: string }> {
+    const response = await this.request<{ message: string }>('/admin/cache/clear', {
+      method: 'POST'
+    });
     return response.data;
   }
 

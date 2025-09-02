@@ -29,8 +29,8 @@ class FileController extends Controller
             'original_name' => 'required|string|max:255',
             'file_type' => 'required|string|max:100',
             'file_size' => 'required|integer|min:1',
-            'source_language' => 'sometimes|string|max:10',
-            'target_language' => 'sometimes|string|max:10',
+            'source_language' => 'required|string|max:10',
+            'target_language' => 'required|string|max:10',
         ]);
 
         if ($validator->fails()) {
@@ -46,6 +46,8 @@ class FileController extends Controller
             $originalName = $request->input('original_name');
             $fileType = $request->input('file_type');
             $fileSize = $request->input('file_size');
+            $sourceLanguage = $request->input('source_language');
+            $targetLanguage = $request->input('target_language');
 
             // Generate unique filename
             $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
@@ -61,16 +63,19 @@ class FileController extends Controller
                 'file_path' => $path,
                 'file_type' => $fileType,
                 'file_size' => $fileSize,
+                'source_language' => $sourceLanguage,
+                'target_language' => $targetLanguage,
                 'status' => 'uploaded',
                 'translation_accuracy' => null,
             ]);
 
             // Log the upload
             $this->systemLogService->log(
+                'info',
                 'file_uploaded',
                 'File uploaded successfully',
-                Auth::user(),
-                ['file_id' => $fileRecord->id, 'filename' => $originalName]
+                ['file_id' => $fileRecord->id, 'filename' => $originalName],
+                $request
             );
 
             return response()->json([
@@ -101,7 +106,7 @@ class FileController extends Controller
      */
     public function index(Request $request)
     {
-        $query = File::with('user');
+        $query = File::with(['user', 'translations']);
 
         // Apply filters
         if ($request->has('status')) {

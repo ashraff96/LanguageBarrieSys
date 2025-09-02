@@ -1,0 +1,7 @@
+This is a test document for translation.
+
+Hello world! This is some sample text that can be translated from English to Spanish or any other language.
+
+The document contains multiple paragraphs to test the translation functionality and ensure that the document count updates correctly on the dashboard.
+
+End of test document.

@@ -30,6 +30,9 @@ class AdminController extends Controller
     public function dashboardStats(): JsonResponse
     {
         try {
+            // Log the request for debugging
+            Log::info('Dashboard stats requested at: ' . now()->toDateTimeString());
+            
             $stats = [
                 'total_users' => User::count(),
                 'active_users' => User::where('status', 'active')->count(),
@@ -41,7 +44,10 @@ class AdminController extends Controller
                 'total_storage_used' => $this->formatBytes(File::sum('file_size') ?? 0),
                 'recent_activity' => $this->getRecentActivity(),
                 'system_status' => $this->getSystemStatus(),
+                'last_updated' => now()->toISOString(), // Add timestamp
             ];
+
+            Log::info('Dashboard stats computed:', $stats);
 
             return response()->json([
                 'success' => true,
@@ -220,10 +226,10 @@ class AdminController extends Controller
         $activities = [];
 
         try {
-            // Get recent file uploads
+            // Get recent file uploads (increased limit for more activity)
             $recentFiles = File::with('user:id,name')
                 ->orderBy('created_at', 'desc')
-                ->limit(5)
+                ->limit(10) // Increased from 5 to 10
                 ->get();
 
             foreach ($recentFiles as $file) {
@@ -236,14 +242,15 @@ class AdminController extends Controller
                         'time' => $file->created_at->diffForHumans(),
                         'status' => $file->status,
                         'type' => 'file_upload',
+                        'timestamp' => $file->created_at, // Add actual timestamp for sorting
                     ];
                 }
             }
 
-            // Get recent translations
+            // Get recent translations (increased limit for more activity)
             $recentTranslations = Translation::with('user:id,name')
                 ->orderBy('created_at', 'desc')
-                ->limit(5)
+                ->limit(10) // Increased from 5 to 10
                 ->get();
 
             foreach ($recentTranslations as $translation) {
@@ -256,16 +263,23 @@ class AdminController extends Controller
                         'time' => $translation->created_at->diffForHumans(),
                         'status' => 'completed',
                         'type' => 'translation',
+                        'timestamp' => $translation->created_at, // Add actual timestamp for sorting
                     ];
                 }
             }
 
-            // Sort by time and return top 10
+            // Sort by actual timestamp (most recent first)
             usort($activities, function($a, $b) {
-                return strtotime($b['time']) - strtotime($a['time']);
+                return $b['timestamp']->timestamp <=> $a['timestamp']->timestamp;
             });
 
-            return array_slice($activities, 0, 10);
+            // Remove timestamp field from final output and return top 15
+            $activities = array_slice($activities, 0, 15); // Increased from 10 to 15
+            foreach ($activities as &$activity) {
+                unset($activity['timestamp']);
+            }
+
+            return $activities;
         } catch (\Exception $e) {
             // If there's an error, return empty array instead of crashing
             Log::error('Error getting recent activity: ' . $e->getMessage());
@@ -369,5 +383,212 @@ class AdminController extends Controller
         }
 
         return round($bytes, $precision) . ' ' . $units[$i];
+    }
+
+    /**
+     * Create database backup
+     */
+    public function createDatabaseBackup(): JsonResponse
+    {
+        try {
+            $backupPath = storage_path('backups/database_backup_' . date('Y_m_d_H_i_s') . '.sqlite');
+            
+            // Create backup directory if it doesn't exist
+            if (!file_exists(dirname($backupPath))) {
+                mkdir(dirname($backupPath), 0755, true);
+            }
+            
+            // Copy database file
+            $databasePath = database_path('database.sqlite');
+            copy($databasePath, $backupPath);
+            
+            Log::info('Database backup created: ' . $backupPath);
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Database backup created successfully',
+                'backup_path' => basename($backupPath),
+                'size' => $this->formatBytes(filesize($backupPath))
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error creating database backup: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to create database backup',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Optimize database
+     */
+    public function optimizeDatabase(): JsonResponse
+    {
+        try {
+            // Run SQLite optimization commands
+            DB::statement('VACUUM');
+            DB::statement('ANALYZE');
+            
+            Log::info('Database optimization completed');
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Database optimization completed successfully'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error optimizing database: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to optimize database',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Clean old data from database
+     */
+    public function cleanupDatabase(): JsonResponse
+    {
+        try {
+            $cleanupResults = [];
+            
+            // Clean old translation history (older than 90 days)
+            $oldHistoryCount = TranslationHistory::where('created_at', '<', now()->subDays(90))->count();
+            TranslationHistory::where('created_at', '<', now()->subDays(90))->delete();
+            $cleanupResults['old_translation_history'] = $oldHistoryCount;
+            
+            // Clean failed translations (older than 30 days)
+            $failedTranslationsCount = Translation::where('status', 'failed')
+                ->where('created_at', '<', now()->subDays(30))->count();
+            Translation::where('status', 'failed')
+                ->where('created_at', '<', now()->subDays(30))->delete();
+            $cleanupResults['failed_translations'] = $failedTranslationsCount;
+            
+            // Clean old system logs (older than 30 days)
+            $oldLogsCount = SystemLog::where('created_at', '<', now()->subDays(30))->count();
+            SystemLog::where('created_at', '<', now()->subDays(30))->delete();
+            $cleanupResults['old_system_logs'] = $oldLogsCount;
+            
+            Log::info('Database cleanup completed', $cleanupResults);
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Database cleanup completed successfully',
+                'cleanup_results' => $cleanupResults
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error cleaning database: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to cleanup database',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get admin settings
+     */
+    public function getSettings(): JsonResponse
+    {
+        try {
+            // Return mock settings - in a real app, these would come from a settings table
+            $settings = [
+                'general' => [
+                    'site_name' => config('app.name', 'DocuTranslate'),
+                    'site_url' => config('app.url'),
+                    'admin_email' => config('mail.from.address'),
+                    'timezone' => config('app.timezone'),
+                    'language' => 'en',
+                    'maintenance_mode' => false,
+                ],
+                'database' => [
+                    'backup_frequency' => 'daily',
+                    'auto_cleanup' => true,
+                    'max_file_size' => '50MB',
+                    'storage_limit' => '10GB',
+                ],
+                'security' => [
+                    'session_timeout' => '30',
+                    'max_login_attempts' => 5,
+                    'password_complexity' => true,
+                    'two_factor_auth' => false,
+                ],
+                'notifications' => [
+                    'email_notifications' => true,
+                    'system_alerts' => true,
+                    'user_registration' => true,
+                    'translation_complete' => false,
+                ],
+            ];
+
+            return response()->json([
+                'success' => true,
+                'data' => $settings
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error fetching settings: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch settings'
+            ], 500);
+        }
+    }
+
+    /**
+     * Update admin settings
+     */
+    public function updateSettings(Request $request): JsonResponse
+    {
+        try {
+            $category = $request->input('category');
+            $settings = $request->input('settings');
+            
+            // In a real app, you would save these to a settings table
+            // For now, we'll just log them and return success
+            Log::info("Settings updated for category: {$category}", $settings);
+            
+            return response()->json([
+                'success' => true,
+                'message' => ucfirst($category) . ' settings updated successfully'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error updating settings: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update settings',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Clear application cache
+     */
+    public function clearCache(): JsonResponse
+    {
+        try {
+            // Clear various caches
+            \Artisan::call('cache:clear');
+            \Artisan::call('config:clear');
+            \Artisan::call('route:clear');
+            \Artisan::call('view:clear');
+            
+            Log::info('Application caches cleared');
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Application caches cleared successfully'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error clearing cache: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to clear cache',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 } 

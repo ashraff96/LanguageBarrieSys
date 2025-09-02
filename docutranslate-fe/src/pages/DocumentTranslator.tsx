@@ -97,6 +97,7 @@ const DocumentTranslator = () => {
   const [downloadFormat, setDownloadFormat] = useState("txt");
   const [notifications, setNotifications] = useState([]);
   const [uploadedFile, setUploadedFile] = useState<any>(null);
+  const [uploadedFileId, setUploadedFileId] = useState<number | null>(null);
   const [translationStatus, setTranslationStatus] = useState<'idle' | 'uploading' | 'processing' | 'completed' | 'failed'>('idle');
   const [isPending, startTransition] = useTransition();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -175,14 +176,35 @@ const DocumentTranslator = () => {
     setTranslationStatus('uploading');
 
     try {
+      // Extract text for display
+      let extractedText = '';
       if (selectedFile.type === 'application/pdf') {
-        const extractedText = await extractTextFromPDF(selectedFile);
+        extractedText = await extractTextFromPDF(selectedFile);
         setSourceText(extractedText);
-        showToast("PDF Processed", "Text extracted successfully from PDF");
       } else {
-        const text = await selectedFile.text();
-        setSourceText(text);
-        showToast("File Processed", "Text loaded successfully");
+        extractedText = await selectedFile.text();
+        setSourceText(extractedText);
+      }
+
+      // Always upload file to backend (use default languages if not selected)
+      try {
+        const uploadedFile = await fileUploadService.uploadFile(
+          selectedFile,
+          sourceLanguage || 'en', // Default to English if not selected
+          targetLanguage || 'es'  // Default to Spanish if not selected
+        );
+        setUploadedFile(uploadedFile);
+        setUploadedFileId(uploadedFile?.id || null);
+        if (sourceLanguage && targetLanguage) {
+          showToast("File Uploaded", "File saved and ready for translation");
+        } else {
+          showToast("File Uploaded", "File saved - please select languages for translation");
+        }
+      } catch (uploadError) {
+        console.error('Upload error:', uploadError);
+        // Show detailed error message
+        const errorMessage = uploadError.message || 'Failed to save file to server';
+        showToast("Upload Error", errorMessage, "error");
       }
       
       setTranslationStatus('processing');
@@ -191,7 +213,7 @@ const DocumentTranslator = () => {
       setTranslationStatus('failed');
       showToast("Error", "Failed to process file", "error");
     }
-  }, [extractTextFromPDF, showToast]);
+  }, [extractTextFromPDF, showToast, sourceLanguage, targetLanguage]);
 
   // Handle file input change
   const handleFileChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
@@ -213,26 +235,109 @@ const DocumentTranslator = () => {
       return;
     }
 
+    // Check if user is authenticated
+    if (!isAuthenticated || !user) {
+      showToast("Authentication Required", "Please login to use the translation feature", "error");
+      return;
+    }
+
     setIsLoading(true);
     setTranslationStatus('processing');
 
     try {
       startTransition(() => {
-        // Use setTimeout to simulate async operation without making the transition function async
+        // Use setTimeout to handle async operation without making transition function async
         setTimeout(async () => {
           try {
-            // Simulate translation API call
-            await new Promise(resolve => setTimeout(resolve, 2000));
-            
-            // Mock translation (replace with actual API call)
-            const mockTranslation = `Translated: ${sourceText.substring(0, 100)}...`;
-            setTranslatedText(mockTranslation);
+            // Get token from apiService
+            const token = apiService.getToken();
+            if (!token) {
+              throw new Error('Authentication token not found. Please login again.');
+            }
+
+            // First, call the translation API
+            const translationResponse = await fetch('http://localhost:8000/api/translations/translate', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+                'Accept': 'application/json',
+              },
+              body: JSON.stringify({
+                text: sourceText,
+                source_language: sourceLanguage,
+                target_language: targetLanguage,
+              }),
+            });
+
+            if (!translationResponse.ok) {
+              throw new Error(`Translation failed: ${translationResponse.statusText}`);
+            }
+
+            const translationData = await translationResponse.json();
+            const translatedText = translationData.data?.translated_text || translationData.translated_text;
+
+            if (!translatedText) {
+              throw new Error('No translated text received from API');
+            }
+
+            setTranslatedText(translatedText);
+
+            // Create translation record
+            const translationRecord = {
+              original_text: sourceText,
+              translated_text: translatedText,
+              source_language: sourceLanguage,
+              target_language: targetLanguage,
+              file_name: uploadedFile?.original_name || 'Unknown',
+              file_type: uploadedFile?.file_type || 'text/plain',
+              file_size: uploadedFile?.file_size || sourceText.length,
+              metadata: {
+                translation_method: 'document_translator',
+                processed_at: new Date().toISOString()
+              }
+            };
+
+            const createResponse = await fetch('http://localhost:8000/api/translations', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+                'Accept': 'application/json',
+              },
+              body: JSON.stringify(translationRecord),
+            });
+
+            if (!createResponse.ok) {
+              console.warn('Failed to create translation record:', createResponse.statusText);
+            }
+
+            // Update file status to translated if we have a file ID
+            if (uploadedFileId) {
+              const statusResponse = await fetch(`http://localhost:8000/api/files/${uploadedFileId}/status`, {
+                method: 'PATCH',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${token}`,
+                  'Accept': 'application/json',
+                },
+                body: JSON.stringify({
+                  status: 'translated',
+                  translation_accuracy: 95 // Default accuracy score
+                }),
+              });
+
+              if (!statusResponse.ok) {
+                console.warn('Failed to update file status:', statusResponse.statusText);
+              }
+            }
+
             setTranslationStatus('completed');
             showToast("Translation Complete", "Document translated successfully");
           } catch (error) {
             console.error('Translation error:', error);
             setTranslationStatus('failed');
-            showToast("Translation Failed", "An error occurred during translation", "error");
+            showToast("Translation Failed", error.message || "An error occurred during translation", "error");
           } finally {
             setIsLoading(false);
           }
@@ -244,7 +349,7 @@ const DocumentTranslator = () => {
       showToast("Translation Failed", "An error occurred during translation", "error");
       setIsLoading(false);
     }
-  }, [sourceText, sourceLanguage, targetLanguage, showToast]);
+  }, [sourceText, sourceLanguage, targetLanguage, showToast, uploadedFile, uploadedFileId, isAuthenticated, user]);
 
   // Handle download
   const handleDownload = useCallback(() => {
@@ -431,7 +536,7 @@ const DocumentTranslator = () => {
                 )}
               </CardContent>
             </Card>
-              </div>
+          </div>
 
           {/* Status Indicators */}
           {translationStatus !== 'idle' && (

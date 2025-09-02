@@ -6,3 +6,40 @@
   font-family: 'Bamini';
   src: url('/fonts/Bamini.ttf') format('truetype');
 }
+
+/* Language-specific font classes */
+.font-tamil {
+  font-family: 'Noto Sans Tamil', 'Tamil Sangam MN', 'InaiMathi', 'Tamil MN', sans-serif;
+  font-feature-settings: "liga" 1, "kern" 1;
+}
+
+.font-sinhala {
+  font-family: 'Noto Sans Sinhala', 'Iskoola Pota', 'FM Malithi', sans-serif;
+  font-feature-settings: "liga" 1, "kern" 1;
+}
+
+.font-english {
+  font-family: 'Noto Sans', 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* Text area specific styles for different languages */
+.textarea-tamil {
+  font-family: 'Noto Sans Tamil', 'Tamil Sangam MN', sans-serif;
+  font-size: 1.1rem;
+  line-height: 1.6;
+  letter-spacing: 0.02em;
+}
+
+.textarea-sinhala {
+  font-family: 'Noto Sans Sinhala', 'Iskoola Pota', sans-serif;
+  font-size: 1.1rem;
+  line-height: 1.7;
+  letter-spacing: 0.01em;
+}
+
+.textarea-english {
+  font-family: 'Noto Sans', 'Inter', system-ui, sans-serif;
+  font-size: 1rem;
+  line-height: 1.5;
+  letter-spacing: 0;
+}

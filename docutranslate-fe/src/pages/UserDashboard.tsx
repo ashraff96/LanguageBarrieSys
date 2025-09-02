@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -28,13 +28,7 @@ export default function UserDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
-  useEffect(() => {
-    if (user) {
-      fetchUserData();
-    }
-  }, [user]);
-
-  const fetchUserData = async () => {
+  const fetchUserData = useCallback(async () => {
     try {
       setIsLoading(true);
       const [filesResponse, statsResponse, activityResponse] = await Promise.all([
@@ -56,7 +50,25 @@ export default function UserDashboard() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [user?.id, toast]);
+
+  useEffect(() => {
+    if (user) {
+      fetchUserData();
+    }
+  }, [user, fetchUserData]);
+
+  // Refresh data when returning to the page
+  useEffect(() => {
+    const handleFocus = () => {
+      if (user && !isLoading) {
+        fetchUserData();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [user, isLoading, fetchUserData]);
 
   const getStatusIcon = (status: string) => {
     switch (status) {

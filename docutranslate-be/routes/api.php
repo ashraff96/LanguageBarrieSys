@@ -54,6 +54,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Translation routes
     Route::prefix('translations')->group(function () {
         Route::post('/', [TranslationController::class, 'store']);
+        Route::post('/translate', [TranslationController::class, 'translateText']);
         Route::get('/stats', [TranslationController::class, 'getStats']);
         Route::get('/history', [TranslationController::class, 'getHistory']);
         Route::get('/{translation}', [TranslationController::class, 'show']);
@@ -99,6 +100,18 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/database-stats', [AdminController::class, 'getDatabaseStats']);
             Route::get('/system-logs', [AdminController::class, 'getSystemLogs']);
             Route::get('/system-performance', [AdminController::class, 'getSystemPerformance']);
+            
+            // Database management
+            Route::post('/database/backup', [AdminController::class, 'createDatabaseBackup']);
+            Route::post('/database/optimize', [AdminController::class, 'optimizeDatabase']);
+            Route::post('/database/cleanup', [AdminController::class, 'cleanupDatabase']);
+            
+            // Settings management
+            Route::get('/settings', [AdminController::class, 'getSettings']);
+            Route::post('/settings', [AdminController::class, 'updateSettings']);
+            
+            // System management
+            Route::post('/cache/clear', [AdminController::class, 'clearCache']);
         });
 
         // User management (admin only)
@@ -116,6 +129,24 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::prefix('admin/translations')->group(function () {
             Route::get('/', [TranslationController::class, 'index']);
             Route::get('/stats', [TranslationController::class, 'getStats']);
+            Route::get('/stats-debug', function() {
+                try {
+                    $count = \App\Models\Translation::count();
+                    $sample = \App\Models\Translation::first();
+                    return response()->json([
+                        'success' => true,
+                        'count' => $count,
+                        'sample' => $sample,
+                        'message' => 'Debug info'
+                    ]);
+                } catch (\Exception $e) {
+                    return response()->json([
+                        'success' => false,
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString()
+                    ], 500);
+                }
+            });
             Route::get('/history', [TranslationController::class, 'getHistory']);
         });
     });

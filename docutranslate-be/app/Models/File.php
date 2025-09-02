@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class File extends Model
 {
@@ -35,6 +36,14 @@ class File extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Get the translations associated with this file.
+     */
+    public function translations(): HasMany
+    {
+        return $this->hasMany(Translation::class);
     }
 
     /**

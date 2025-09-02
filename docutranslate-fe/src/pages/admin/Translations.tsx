@@ -6,12 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { apiService, Translation, AdminTranslationStats } from "@/lib/services/api-service";
-import { Activity, CheckCircle, Clock, FileText, Filter, Languages, Search, XCircle, ArrowLeft, ArrowRight } from "lucide-react";
+import { Activity, CheckCircle, Clock, FileText, Filter, Languages, Search, XCircle, ArrowLeft, ArrowRight, RefreshCw } from "lucide-react";
 
 export default function AdminTranslations() {
   const [translations, setTranslations] = useState<Translation[]>([]);
   const [stats, setStats] = useState<AdminTranslationStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // filters & pagination
   const [search, setSearch] = useState('');
@@ -29,17 +30,74 @@ export default function AdminTranslations() {
     fetchStats();
   }, []);
 
+  // Auto-refresh every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchStats(false);
+      // Also refresh the translations list to show latest data
+      fetchTranslations();
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, []);
+
   useEffect(() => {
     fetchTranslations();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, status, source, target]);
 
-  const fetchStats = async () => {
+  const refreshAll = async () => {
+    setIsRefreshing(true);
     try {
-      const s = await apiService.getAdminTranslationStats();
-      setStats(s);
+      // Refresh both stats and translations
+      await Promise.all([
+        fetchStats(false),
+        fetchTranslations()
+      ]);
+      
+      toast({
+        title: "Success", 
+        description: `All data refreshed - Total: ${stats?.total_translations || 'N/A'}, Completed: ${stats?.completed_translations || 'N/A'}`,
+      });
     } catch (e) {
       console.error(e);
+      toast({
+        title: "Error",
+        description: "Failed to refresh data", 
+        variant: "destructive"
+      });
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  const fetchStats = async (showRefreshIndicator = false) => {
+    try {
+      if (showRefreshIndicator) {
+        setIsRefreshing(true);
+      }
+      // Add cache-busting parameter to ensure fresh data
+      const s = await apiService.getAdminTranslationStats();
+      setStats(s);
+      if (showRefreshIndicator) {
+        toast({
+          title: "Success", 
+          description: `Translation statistics refreshed - Total: ${s.total_translations}, Completed: ${s.completed_translations}`,
+        });
+      }
+    } catch (e) {
+      console.error(e);
+      if (showRefreshIndicator) {
+        toast({
+          title: "Error",
+          description: "Failed to refresh statistics", 
+          variant: "destructive"
+        });
+      }
+    } finally {
+      if (showRefreshIndicator) {
+        setIsRefreshing(false);
+      }
     }
   };
 
@@ -108,6 +166,21 @@ export default function AdminTranslations() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Translations</h1>
           <p className="text-muted-foreground">Manage and review all translations</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={refreshAll}
+            disabled={isRefreshing}
+            variant="outline"
+            size="sm"
+          >
+            {isRefreshing ? (
+              <RefreshCw className="h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4" />
+            )}
+            <span className="ml-2">Refresh All</span>
+          </Button>
         </div>
       </div>
 
@@ -216,7 +289,23 @@ export default function AdminTranslations() {
                     </div>
                   </TableCell>
                   <TableCell>{getStatusBadge(t.status)}</TableCell>
-                  <TableCell>{t.file_name || '-'}</TableCell>
+                  <TableCell>
+                    {t.file_name ? (
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-4 w-4 text-blue-500" />
+                        <div>
+                          <p className="font-medium text-sm">{t.file_name}</p>
+                          {(t as any).file && (
+                            <p className="text-xs text-muted-foreground">
+                              {(t as any).file.file_type} • {(t as any).file.file_size ? Math.round((t as any).file.file_size / 1024) + ' KB' : 'Unknown size'}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground">No file</span>
+                    )}
+                  </TableCell>
                   <TableCell>{t.created_at ? new Date(t.created_at).toLocaleDateString() : '-'}</TableCell>
                 </TableRow>
               ))}
