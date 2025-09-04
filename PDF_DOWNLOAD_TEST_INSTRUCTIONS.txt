@@ -1,0 +1,42 @@
+Test Instructions for PDF Download Fix
+==========================================
+
+1. Open your browser and go to: http://localhost:8081/document-translator
+
+2. Test the translation and download functionality:
+
+Step 1: Test Translation
+- Enter some English text in the "Source Text" field
+- Make sure "English" is selected as Source Language  
+- Select "Tamil" or "Sinhala" as Target Language
+- Click "Translate Document"
+- Verify the text gets translated properly
+
+Step 2: Test PDF Download
+- After translation is complete, look for the "Download Translation" section
+- In the format dropdown, select "PDF" 
+- Click the "Download" button
+- A PDF file should download to your Downloads folder
+
+Step 3: Verify PDF Content
+- Open the downloaded PDF file 
+- Verify it contains:
+  * A header with "Document Translation"
+  * The current date
+  * The translated text properly formatted
+  * A footer with "Powered by DocuTranslate"
+
+Expected Result:
+- The PDF should open successfully (no "Failed to load PDF document" error)
+- The content should be properly formatted and readable
+- Tamil/Sinhala text should display correctly
+
+Additional Tests:
+- Try downloading as DOC format (should generate RTF file)
+- Try downloading as TXT format (should work as before)
+- Test with longer documents to verify chunking works
+
+If you see any issues, please report:
+1. What step failed
+2. What error message appeared
+3. Browser console errors (F12 > Console tab)

@@ -46,7 +46,7 @@ const Navigation = React.memo(() => {
           </a>
           <a href="/admin" className="flex items-center space-x-2 hover:text-blue-100 transition-colors duration-200">
             <Settings className="w-4 h-4" />
-            <span>Admin Dashboard</span>
+            <span>Dashboard</span>
           </a>
         </div>
       </div>
@@ -249,18 +249,11 @@ const DocumentTranslator = () => {
         // Use setTimeout to handle async operation without making transition function async
         setTimeout(async () => {
           try {
-            // Get token from apiService
-            const token = apiService.getToken();
-            if (!token) {
-              throw new Error('Authentication token not found. Please login again.');
-            }
-
             // First, call the translation API
-            const translationResponse = await fetch('http://localhost:8000/api/translations/translate', {
+            const translationResponse = await fetch('http://127.0.0.1:8000/api/translate', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`,
                 'Accept': 'application/json',
               },
               body: JSON.stringify({
@@ -308,7 +301,6 @@ const DocumentTranslator = () => {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`,
                 'Accept': 'application/json',
               },
               body: JSON.stringify(translationRecord),
@@ -324,7 +316,6 @@ const DocumentTranslator = () => {
                 method: 'PATCH',
                 headers: {
                   'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${token}`,
                   'Accept': 'application/json',
                 },
                 body: JSON.stringify({
@@ -358,18 +349,53 @@ const DocumentTranslator = () => {
   }, [sourceText, sourceLanguage, targetLanguage, showToast, uploadedFile, uploadedFileId, isAuthenticated, user]);
 
   // Handle download
-  const handleDownload = useCallback(() => {
+  const handleDownload = useCallback(async () => {
     if (!translatedText) return;
 
-    const element = document.createElement('a');
-    const file = new Blob([translatedText], { type: 'text/plain' });
-    element.href = URL.createObjectURL(file);
-    element.download = `translation.${downloadFormat}`;
-    document.body.appendChild(element);
-    element.click();
-    document.body.removeChild(element);
-    
-    showToast("Download Started", "Translation downloaded successfully");
+    try {
+      const response = await fetch('http://127.0.0.1:8000/api/download-formatted', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          text: translatedText,
+          format: downloadFormat,
+          filename: `translation`
+        })
+      });
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const element = document.createElement('a');
+        element.href = url;
+        element.download = `translation.${downloadFormat}`;
+        document.body.appendChild(element);
+        element.click();
+        document.body.removeChild(element);
+        window.URL.revokeObjectURL(url);
+        
+        showToast("Download Started", "Translation downloaded successfully");
+      } else {
+        throw new Error('Download failed');
+      }
+    } catch (error) {
+      console.error('Download error:', error);
+      // Fallback to client-side generation for txt files
+      if (downloadFormat === 'txt') {
+        const element = document.createElement('a');
+        const file = new Blob([translatedText], { type: 'text/plain' });
+        element.href = URL.createObjectURL(file);
+        element.download = `translation.${downloadFormat}`;
+        document.body.appendChild(element);
+        element.click();
+        document.body.removeChild(element);
+        showToast("Download Started", "Translation downloaded successfully");
+      } else {
+        showToast("Download Failed", "Could not generate " + downloadFormat.toUpperCase() + " file", "error");
+      }
+    }
   }, [translatedText, downloadFormat, showToast]);
 
   // Update preferred languages when they change

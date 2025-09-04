@@ -32,6 +32,35 @@ Route::get('/health', function () {
     ]);
 });
 
+// Public translation route for testing (remove in production)
+Route::post('/translate', [TranslationController::class, 'translateText']);
+Route::post('/download-formatted', [TranslationController::class, 'downloadFormatted']);
+
+// Public test endpoint for translation stats
+Route::get('/test-translation-stats', function() {
+    try {
+        $count = \App\Models\Translation::count();
+        $stats = [
+            'total_translations' => $count,
+            'completed_translations' => \App\Models\Translation::where('status', 'completed')->count(),
+            'sample' => \App\Models\Translation::first()
+        ];
+        return response()->json([
+            'success' => true,
+            'data' => $stats
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ], 500);
+    }
+});
+
+// Temporary public admin stats endpoint for development
+Route::get('/public-admin-stats', [TranslationController::class, 'getStats']);
+
 // Authentication routes
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');

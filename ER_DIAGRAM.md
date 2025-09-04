@@ -11,13 +11,14 @@
 │ 📧 email        │     │ 📝 display_name │     │ 📅 created_at   │
 │ 🔒 password     │     │ 📝 description  │     └─────────────────┘
 │ 📊 status       │     │ 📅 created_at   │              │
-│ 📅 created_at   │     │ 📅 updated_at   │              │
-│ 📅 updated_at   │     └─────────────────┘              │
-└─────────────────┘              │                       │
-         │                       │                       │
-         │                       └───────────────────────┘
-         │                                │
+│ � preferences  │     │ 📅 updated_at   │              │
+│ 🎯 skill_level  │     └─────────────────┘              │
+│ 📅 last_login   │              │                       │
+│ 📅 created_at   │              │                       │
+│ 📅 updated_at   │              └───────────────────────┘
+└─────────────────┘                       │
          │                                │ Many-to-Many
+         │                                │
          │ One-to-Many                    │
          │                                │
          ▼                                ▼
@@ -26,17 +27,19 @@
 ├─────────────────┤                ├─────────────────┤
 │ 🔑 id (PK)      │                │ 🔑 id (PK)      │
 │ 🔗 user_id (FK) │                │ 🔗 user_id (FK) │
-│ 📝 original_name│                │ 🔗 file_id (FK) │
-│ 📝 file_name    │                │ 📝 original_text│
-│ 📂 file_path    │                │ 📝 translated_text
-│ 📊 file_size    │                │ 🌐 source_language
-│ 📄 file_type    │                │ 🌐 target_language
-│ 🌐 source_lang  │                │ 📊 status       │
-│ 🌐 target_lang  │                │ 💯 confidence   │
-│ 📊 status       │                │ 📅 created_at   │
-│ 💯 accuracy     │                │ 📅 updated_at   │
-│ 📅 created_at   │                └─────────────────┘
-│ 📅 updated_at   │                         │
+│ � project_id(FK)│               │ 🔗 file_id (FK) │
+│ 📝 original_name│                │ 📝 original_text│
+│ � file_name    │                │ 📝 translated_text
+│ � file_path    │                │ 🌐 source_language
+│ � file_size    │                │ 🌐 target_language
+│ 📄 file_type    │                │ 📊 status       │
+│ 🌐 source_lang  │                │ 💯 confidence   │
+│ 🌐 target_lang  │                │ 🤖 ai_suggestions│
+│ 📊 status       │                │ ⏱️ processing_time
+│ 💯 accuracy     │                │ � cost         │
+│ 🔒 permissions  │                │ 📅 created_at   │
+│ 📅 created_at   │                │ 📅 updated_at   │
+│ 📅 updated_at   │                └─────────────────┘
 └─────────────────┘                         │
          │                                  │
          │ One-to-Many                      │
@@ -51,10 +54,11 @@
 │ 📝 code         │     │ 🔗 user_id (FK) │     │ 🔗 user_id (FK) │
 │ 📝 name         │     │ 🔗 trans_id(FK) │     │ 📝 action       │
 │ 📝 native_name  │     │ 📝 action_type  │     │ 📝 details      │
-│ ✅ is_active    │     │ 📝 details      │     │ 🌐 ip_address   │
-│ 📊 priority     │     │ 📅 created_at   │     │ 📊 level        │
-│ 📅 created_at   │     └─────────────────┘     │ 📅 created_at   │
-│ 📅 updated_at   │              │              └─────────────────┘
+│ ✅ is_active    │     │ 📝 old_value    │     │ 🌐 ip_address   │
+│ 📊 priority     │     │ � new_value    │     │ 📊 level        │
+│ 🤖 ai_supported │     │ 📝 details      │     │ 📊 severity     │
+│ 📅 created_at   │     │ 📅 created_at   │     │ 📅 created_at   │
+│ 📅 updated_at   │     └─────────────────┘     └─────────────────┘
 └─────────────────┘              │                       │
                                  │                       │
                                  │ Many-to-One           │ Many-to-One
@@ -69,22 +73,82 @@
 │ 🌐 language     │     │ 🌐 language     │     │ 📝 correct_answer
 │ 📊 difficulty   │     │ 🔗 created_by   │     │ 📝 options      │
 │ 💯 score        │     │ 📊 quest_count  │     │ 📊 difficulty   │
-│ ⏱️ duration     │     │ 📅 created_at   │     │ 📅 created_at   │
+│ ⏱️ duration     │     │ 🎖️ certificate │     │ � points       │
+│ 🎯 objectives   │     │ �📅 created_at   │     │ 📅 created_at   │
 │ 📅 created_at   │     │ 📅 updated_at   │     │ 📅 updated_at   │
 └─────────────────┘     └─────────────────┘     └─────────────────┘
          │                        │                       │
          │ Many-to-One            │ One-to-Many           │
          └────────────────────────┴───────────────────────┘
-                                 │
-                                 │ Many-to-One
-                                 ▼
+
+    ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+    │    PROJECTS     │     │   COLLABORATORS │     │    COMMENTS     │
+    ├─────────────────┤     ├─────────────────┤     ├─────────────────┤
+    │ 🔑 id (PK)      │     │ 🔑 id (PK)      │     │ 🔑 id (PK)      │
+    │ 📝 name         │     │ 🔗 project_id(FK)│    │ 🔗 user_id (FK) │
+    │ 📝 description  │     │ 🔗 user_id (FK) │     │ 🔗 trans_id(FK) │
+    │ 🔗 owner_id (FK)│     │ 📝 role         │     │ 🔗 file_id (FK) │
+    │ 📊 status       │     │ 🔒 permissions  │     │ 📝 content      │
+    │ 🎯 deadline     │     │ 📅 joined_at    │     │ 🏷️ type         │
+    │ 📊 progress     │     │ 📅 created_at   │     │ 🔗 parent_id(FK)│
+    │ 🔒 visibility   │     └─────────────────┘     │ 📊 status       │
+    │ 📅 created_at   │              │              │ 📅 created_at   │
+    │ 📅 updated_at   │              │              │ 📅 updated_at   │
+    └─────────────────┘              │              └─────────────────┘
+             │                       │                       │
+             │ One-to-Many           │ Many-to-Many          │ Many-to-One
+             └───────────────────────┘                       │
+                                    │                        │
+                                    ▼                        ▼
+    ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+    │  NOTIFICATIONS  │     │    ANALYTICS    │     │   API_TOKENS    │
+    ├─────────────────┤     ├─────────────────┤     ├─────────────────┤
+    │ 🔑 id (PK)      │     │ 🔑 id (PK)      │     │ 🔑 id (PK)      │
+    │ 🔗 user_id (FK) │     │ 🔗 user_id (FK) │     │ 🔗 user_id (FK) │
+    │ 📝 title        │     │ 📊 metric_type  │     │ 📝 name         │
+    │ 📝 message      │     │ 📝 metric_value │     │ 🔑 token_hash   │
+    │ 🏷️ type         │     │ 📅 date         │     │ 🔒 permissions  │
+    │ 📊 priority     │     │ 📊 category     │     │ 📊 usage_count  │
+    │ ✅ is_read      │     │ 🔗 resource_id  │     │ 📅 expires_at   │
+    │ 📱 channels     │     │ 📝 metadata     │     │ 📅 last_used    │
+    │ 📅 sent_at      │     │ 📅 created_at   │     │ 📅 created_at   │
+    │ 📅 read_at      │     └─────────────────┘     └─────────────────┘
+    │ 📅 created_at   │              │                       │
+    └─────────────────┘              │                       │
+             │                       │ Many-to-One           │ Many-to-One
+             │ Many-to-One           │                       │
+             │                       ▼                       ▼
+    ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+    │  VOICE_SESSIONS │     │   CERTIFICATES  │     │    WEBHOOKS     │
+    ├─────────────────┤     ├─────────────────┤     ├─────────────────┤
+    │ 🔑 id (PK)      │     │ 🔑 id (PK)      │     │ 🔑 id (PK)      │
+    │ 🔗 user_id (FK) │     │ 🔗 user_id (FK) │     │ 🔗 user_id (FK) │
+    │ 🎤 audio_file   │     │ 📝 name         │     │ 📝 name         │
+    │ 📝 original_text│     │ 🏷️ type         │     │ 🔗 url          │
+    │ 📝 transcription│     │ 🌐 language     │     │ 🎯 events       │
+    │ 🌐 source_lang  │     │ 📊 level        │     │ 🔒 secret       │
+    │ 🌐 target_lang  │     │ 💯 score        │     │ ✅ is_active    │
+    │ 💯 confidence   │     │ 📅 issued_date  │     │ 🔄 retry_count  │
+    │ ⏱️ duration     │     │ 📅 expires_date │     │ 📅 last_called  │
+    │ 📅 created_at   │     │ 🔗 issuer       │     │ 📅 created_at   │
+    └─────────────────┘     │ 📅 created_at   │     └─────────────────┘
+             │              └─────────────────┘              │
+             │ Many-to-One           │                       │
+             │                       │ Many-to-One           │ Many-to-One
+             │                       │                       │
+             ▼                       ▼                       ▼
                     ┌─────────────────┐
                     │  USER_SESSIONS  │
                     ├─────────────────┤
                     │ 🔑 id (PK)      │
                     │ 🔗 user_id (FK) │
                     │ 🔑 token        │
+                    │ 📱 device_info  │
+                    │ 🌐 ip_address   │
+                    │ 📍 location     │
+                    │ ✅ is_active    │
                     │ 📅 expires_at   │
+                    │ 📅 last_activity│
                     │ 📅 created_at   │
                     └─────────────────┘
 ```
@@ -98,6 +162,28 @@
 - **Files → Translations**: One-to-Many (one file can have multiple translations)
 - **Users → System_Logs**: One-to-Many (user activities are logged)
 - **Users → Practice_Sessions**: One-to-Many (user practice history)
+- **Projects → Files**: One-to-Many (project can contain multiple files)
+- **Projects → Collaborators**: One-to-Many (project can have multiple collaborators)
+
+### 🤝 **Collaboration Relationships**
+- **Users → Projects**: One-to-Many (users can own multiple projects)
+- **Projects ↔ Users**: Many-to-Many (via collaborators table)
+- **Users → Comments**: One-to-Many (users can make multiple comments)
+- **Translations → Comments**: One-to-Many (translations can have multiple comments)
+- **Files → Comments**: One-to-Many (files can have multiple comments)
+- **Comments → Comments**: One-to-Many (nested comments/replies)
+
+### 📊 **Analytics & Monitoring Relationships**
+- **Users → Analytics**: One-to-Many (user activity metrics)
+- **Users → Notifications**: One-to-Many (user notifications)
+- **Users → Voice_Sessions**: One-to-Many (voice translation history)
+- **Users → API_Tokens**: One-to-Many (API access tokens)
+- **Users → Webhooks**: One-to-Many (webhook configurations)
+
+### 🎓 **Learning & Certification Relationships**
+- **Users → Certificates**: One-to-Many (earned certificates)
+- **Practice_Sessions → Certificates**: Many-to-One (sessions contribute to certificates)
+- **Rajabasha_Papers → Certificates**: Many-to-One (exam completion certificates)
 
 ### 📊 **Secondary Relationships**
 - **Translations → Translation_History**: One-to-Many (audit trail)
@@ -111,32 +197,173 @@
 
 ## Entity Descriptions:
 
-### 👤 **USERS**
-Central entity representing system users (regular users, translators, admins)
+### 👤 **Core Entities**
 
-### 📄 **FILES** 
-Uploaded documents for translation with metadata and processing status
+#### **USERS** (Enhanced)
+Central entity with additional fields for collaboration and personalization:
+- `preferences`: User settings and language preferences
+- `skill_level`: Language proficiency tracking
+- `last_login`: Security and analytics tracking
 
-### 🔤 **TRANSLATIONS**
-Translation results linking users, files, and language pairs
+#### **FILES** (Enhanced)
+Document management with collaboration support:
+- `project_id`: Links files to collaborative projects
+- `permissions`: Access control for file sharing
+- Enhanced metadata for better organization
 
-### 🔐 **ROLES**
-Permission-based access control (Admin, Translator, User)
+#### **TRANSLATIONS** (Enhanced)
+Advanced translation tracking:
+- `ai_suggestions`: AI-powered improvement suggestions
+- `processing_time`: Performance metrics
+- `cost`: Translation service cost tracking
 
-### 🌐 **LANGUAGES**
-Supported languages for translation services
+### 🤝 **Collaboration Entities**
 
-### 📊 **TRANSLATION_HISTORY**
-Audit trail for translation activities
+#### **PROJECTS**
+Team collaboration workspace:
+- Project organization and management
+- Progress tracking and deadlines
+- Visibility and access control
 
-### 🔧 **SYSTEM_LOGS**
-System-wide activity and error logging
+#### **COLLABORATORS**
+Project team management:
+- Role-based collaboration (viewer, editor, manager)
+- Permission management
+- Collaboration history
 
-### 🎯 **PRACTICE_SESSIONS**
-Language learning and practice activities
+#### **COMMENTS**
+Communication and feedback system:
+- Threaded discussions
+- File and translation annotations
+- Status tracking for feedback resolution
 
-### 📝 **RAJABASHA_PAPERS**
-Government exam papers and questions
+### 📊 **Analytics & Monitoring Entities**
 
-### 🔑 **USER_SESSIONS**
-Authentication and session management
+#### **ANALYTICS**
+Comprehensive metrics collection:
+- User behavior tracking
+- System performance monitoring
+- Usage pattern analysis
+- Custom metric support
+
+#### **NOTIFICATIONS**
+Multi-channel communication:
+- Email, push, and in-app notifications
+- Priority-based delivery
+- Read status tracking
+- Multiple delivery channels
+
+### 🎤 **Advanced Feature Entities**
+
+#### **VOICE_SESSIONS**
+Voice translation capabilities:
+- Audio file processing
+- Speech-to-text transcription
+- Voice translation workflows
+- Quality confidence scoring
+
+#### **API_TOKENS**
+Developer integration support:
+- API access management
+- Usage tracking and limits
+- Permission scoping
+- Security monitoring
+
+#### **WEBHOOKS**
+Real-time integration:
+- Event-driven notifications
+- External system integration
+- Retry mechanisms
+- Security with secrets
+
+### 🎓 **Learning & Certification Entities**
+
+#### **CERTIFICATES**
+Achievement and credentialing:
+- Language proficiency certificates
+- Course completion tracking
+- Skill validation
+- Expiration management
+
+#### **PRACTICE_SESSIONS** (Enhanced)
+Improved learning tracking:
+- `objectives`: Learning goal tracking
+- Enhanced difficulty progression
+- Better performance analytics
+
+#### **RAJABASHA_PAPERS** (Enhanced)
+Government exam system:
+- `certificate`: Certification upon completion
+- Enhanced metadata
+- Better organization
+
+### 🔧 **System Enhancement Entities**
+
+#### **LANGUAGES** (Enhanced)
+Better language support:
+- `ai_supported`: AI translation capability flags
+- Enhanced prioritization
+- Better metadata
+
+#### **TRANSLATION_HISTORY** (Enhanced)
+Comprehensive audit trail:
+- `old_value` / `new_value`: Change tracking
+- Enhanced action logging
+- Better audit capabilities
+
+#### **SYSTEM_LOGS** (Enhanced)
+Advanced monitoring:
+- `severity`: Alert level classification
+- Enhanced error tracking
+- Better security monitoring
+
+#### **USER_SESSIONS** (Enhanced)
+Advanced session management:
+- `device_info`: Multi-device support
+- `location`: Geographic tracking
+- `last_activity`: Session management
+- Enhanced security features
+
+## 🚀 **New Features Enabled by Enhanced ER Design:**
+
+### 1. 🤝 **Team Collaboration**
+- Shared projects and workspaces
+- Real-time collaborative editing
+- Role-based permissions
+- Comment and review systems
+
+### 2. � **Advanced Analytics**
+- User behavior tracking
+- Performance monitoring
+- Usage analytics
+- Custom metrics and reporting
+
+### 3. 🔔 **Smart Notifications**
+- Multi-channel delivery
+- Priority-based alerts
+- Read status tracking
+- Personalized notifications
+
+### 4. 🎤 **Voice & AI Integration**
+- Voice translation sessions
+- AI-powered suggestions
+- Quality assessment
+- Performance optimization
+
+### 5. � **API & Integration Platform**
+- Developer API access
+- Webhook integrations
+- Third-party connectivity
+- Usage monitoring
+
+### 6. 🎓 **Learning & Certification**
+- Skill assessment
+- Progress tracking
+- Official certifications
+- Personalized learning paths
+
+### 7. 🔒 **Enhanced Security**
+- Comprehensive audit trails
+- Session management
+- API security
+- Permission controls

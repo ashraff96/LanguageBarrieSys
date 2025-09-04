@@ -444,7 +444,8 @@ class ApiService {
   async getAdminTranslationStats(): Promise<AdminTranslationStats> {
     // Add cache-busting parameter to ensure fresh data
     const timestamp = Date.now();
-    const response = await this.request<AdminTranslationStats>(`/admin/translations/stats?_t=${timestamp}`);
+    // Temporarily use public endpoint for development
+    const response = await this.request<AdminTranslationStats>(`/public-admin-stats?_t=${timestamp}`);
     return (response as any).data || response.data;
   }
 

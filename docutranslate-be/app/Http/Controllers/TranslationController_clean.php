@@ -11,14 +11,11 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\DB;
 use Stichoza\GoogleTranslate\GoogleTranslate;
 use Stichoza\GoogleTranslate\Exceptions\LargeTextException;
 use Stichoza\GoogleTranslate\Exceptions\RateLimitException;
 use Stichoza\GoogleTranslate\Exceptions\TranslationRequestException;
 use Stichoza\GoogleTranslate\Exceptions\TranslationDecodingException;
-use Dompdf\Dompdf;
-use Dompdf\Options;
 
 class TranslationController extends Controller
 {
@@ -211,29 +208,24 @@ class TranslationController extends Controller
             
             // Create file record if this is a document translation (has file information)
             if ($request->file_name && $request->file_type && $request->file_size) {
-                $userId = $request->user()?->id;
-                
-                // Only create file record if we have an authenticated user
-                if ($userId) {
-                    $fileRecord = File::create([
-                        'original_name' => $request->file_name,
-                        'file_name' => $request->file_name,
-                        'file_path' => 'documents/' . $request->file_name, // Virtual path since we're not storing the actual file
-                        'file_size' => $request->file_size,
-                        'file_type' => $request->file_type,
-                        'user_id' => $userId,
-                        'status' => 'translated',
-                        'source_language' => $sourceLanguage,
-                        'target_language' => $targetLanguage,
-                        'translation_accuracy' => 95.0, // Default accuracy for demo
-                        'metadata' => [
-                            'translation_method' => 'document_translator',
-                            'character_count' => strlen($originalText),
-                            'word_count' => str_word_count($originalText),
-                            'processed_at' => now()->toISOString()
-                        ]
-                    ]);
-                }
+                $fileRecord = File::create([
+                    'original_name' => $request->file_name,
+                    'file_name' => $request->file_name,
+                    'file_path' => 'documents/' . $request->file_name, // Virtual path since we're not storing the actual file
+                    'file_size' => $request->file_size,
+                    'file_type' => $request->file_type,
+                    'user_id' => $request->user()?->id,
+                    'status' => 'translated',
+                    'source_language' => $sourceLanguage,
+                    'target_language' => $targetLanguage,
+                    'translation_accuracy' => 95.0, // Default accuracy for demo
+                    'metadata' => [
+                        'translation_method' => 'document_translator',
+                        'character_count' => strlen($originalText),
+                        'word_count' => str_word_count($originalText),
+                        'processed_at' => now()->toISOString()
+                    ]
+                ]);
             }
 
             // Save translation to database
@@ -619,153 +611,6 @@ class TranslationController extends Controller
     }
 
     /**
-     * Download translation in specified format
-     */
-    public function downloadFormatted(Request $request)
-    {
-        try {
-            $validator = Validator::make($request->all(), [
-                'text' => 'required|string',
-                'format' => 'required|string|in:txt,pdf,doc',
-                'filename' => 'nullable|string|max:255'
-            ]);
-
-            if ($validator->fails()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Validation failed',
-                    'errors' => $validator->errors()
-                ], 422);
-            }
-
-            $text = $request->text;
-            $format = $request->format;
-            $filename = $request->filename ?? 'translation';
-
-            switch ($format) {
-                case 'pdf':
-                    return $this->generatePdf($text, $filename);
-                case 'doc':
-                    return $this->generateDoc($text, $filename);
-                case 'txt':
-                default:
-                    return $this->generateTxt($text, $filename);
-            }
-        } catch (\Exception $e) {
-            Log::error('Error generating formatted download: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Error generating download file'
-            ], 500);
-        }
-    }
-
-    /**
-     * Generate PDF file
-     */
-    private function generatePdf(string $text, string $filename): \Illuminate\Http\Response
-    {
-        $options = new Options();
-        $options->set('defaultFont', 'DejaVu Sans'); // Supports Unicode characters
-        $options->set('isHtml5ParserEnabled', true);
-        $options->set('isPhpEnabled', true);
-
-        $dompdf = new Dompdf($options);
-
-        // Create HTML content with proper encoding and styling
-        $html = '<!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="UTF-8">
-            <style>
-                body {
-                    font-family: DejaVu Sans, sans-serif;
-                    font-size: 12px;
-                    line-height: 1.6;
-                    margin: 20px;
-                    color: #333;
-                }
-                .header {
-                    text-align: center;
-                    margin-bottom: 30px;
-                    border-bottom: 2px solid #333;
-                    padding-bottom: 10px;
-                }
-                .content {
-                    white-space: pre-wrap;
-                    word-wrap: break-word;
-                }
-                .footer {
-                    position: fixed;
-                    bottom: 0;
-                    width: 100%;
-                    text-align: center;
-                    font-size: 10px;
-                    color: #666;
-                }
-            </style>
-        </head>
-        <body>
-            <div class="header">
-                <h1>Document Translation</h1>
-                <p>Generated on ' . date('F d, Y \a\t g:i A') . '</p>
-            </div>
-            <div class="content">' . nl2br(htmlspecialchars($text, ENT_QUOTES, 'UTF-8')) . '</div>
-            <div class="footer">
-                <p>Powered by DocuTranslate - Document Translation Service</p>
-            </div>
-        </body>
-        </html>';
-
-        $dompdf->loadHtml($html);
-        $dompdf->setPaper('A4', 'portrait');
-        $dompdf->render();
-
-        $output = $dompdf->output();
-
-        return response($output)
-            ->header('Content-Type', 'application/pdf')
-            ->header('Content-Disposition', 'attachment; filename="' . $filename . '.pdf"');
-    }
-
-    /**
-     * Generate DOC file (RTF format for compatibility)
-     */
-    private function generateDoc(string $text, string $filename): \Illuminate\Http\Response
-    {
-        // Generate RTF content for better compatibility
-        $rtfContent = '{\\rtf1\\ansi\\deff0 {\\fonttbl {\\f0 Times New Roman;}}';
-        $rtfContent .= '\\f0\\fs24 ';
-        $rtfContent .= '{\\b Document Translation}\\par\\par';
-        $rtfContent .= 'Generated on ' . date('F d, Y \a\t g:i A') . '\\par\\par';
-        $rtfContent .= str_replace(["\n", "\r"], '\\par ', addslashes($text));
-        $rtfContent .= '\\par\\par';
-        $rtfContent .= '{\\i Powered by DocuTranslate - Document Translation Service}';
-        $rtfContent .= '}';
-
-        return response($rtfContent)
-            ->header('Content-Type', 'application/rtf')
-            ->header('Content-Disposition', 'attachment; filename="' . $filename . '.rtf"');
-    }
-
-    /**
-     * Generate TXT file
-     */
-    private function generateTxt(string $text, string $filename): \Illuminate\Http\Response
-    {
-        $content = "Document Translation\n";
-        $content .= str_repeat("=", 50) . "\n";
-        $content .= "Generated on: " . date('F d, Y \a\t g:i A') . "\n\n";
-        $content .= $text . "\n\n";
-        $content .= str_repeat("-", 50) . "\n";
-        $content .= "Powered by DocuTranslate - Document Translation Service\n";
-
-        return response($content)
-            ->header('Content-Type', 'text/plain; charset=utf-8')
-            ->header('Content-Disposition', 'attachment; filename="' . $filename . '.txt"');
-    }
-
-    /**
      * Get translation statistics
      */
     public function statistics(Request $request): JsonResponse
@@ -800,111 +645,6 @@ class TranslationController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Error fetching statistics'
-            ], 500);
-        }
-    }
-
-    /**
-     * Get admin translation statistics
-     */
-    public function getStats(Request $request): JsonResponse
-    {
-        try {
-            $stats = [
-                'total_translations' => Translation::count(),
-                'completed_translations' => Translation::where('status', 'completed')->count(),
-                'processing_translations' => Translation::where('status', 'processing')->count(),
-                'failed_translations' => Translation::where('status', 'failed')->count(),
-                'pending_translations' => Translation::where('status', 'pending')->count(),
-                'total_characters_translated' => Translation::where('status', 'completed')
-                    ->sum(DB::raw('LENGTH(original_text)')),
-                'languages_used' => Translation::select(DB::raw('source_language || "-" || target_language as language_pair'))
-                    ->distinct()
-                    ->count(),
-                'total_users' => Translation::distinct()->count('user_id'),
-                'translations_today' => Translation::whereDate('created_at', today())->count(),
-                'translations_this_week' => Translation::whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])->count(),
-                'translations_this_month' => Translation::whereMonth('created_at', now()->month)
-                    ->whereYear('created_at', now()->year)->count(),
-                'average_translation_length' => Translation::where('status', 'completed')
-                    ->avg(DB::raw('LENGTH(original_text)')),
-                'popular_language_pairs' => Translation::select(
-                        DB::raw('source_language || " → " || target_language as language_pair'),
-                        DB::raw('COUNT(*) as count')
-                    )
-                    ->groupBy('source_language', 'target_language')
-                    ->orderBy('count', 'desc')
-                    ->limit(10)
-                    ->get()
-            ];
-
-            return response()->json([
-                'success' => true,
-                'data' => $stats
-            ]);
-        } catch (\Exception $e) {
-            Log::error('Error fetching admin translation statistics: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Error fetching admin statistics: ' . $e->getMessage()
-            ], 500);
-        }
-    }
-
-    /**
-     * Get translation history for admin
-     */
-    public function getHistory(Request $request): JsonResponse
-    {
-        try {
-            $query = Translation::with(['user:id,name,email'])
-                ->orderBy('created_at', 'desc');
-
-            // Apply filters
-            if ($request->has('status')) {
-                $query->where('status', $request->status);
-            }
-
-            if ($request->has('user_id')) {
-                $query->where('user_id', $request->user_id);
-            }
-
-            if ($request->has('source_language')) {
-                $query->where('source_language', $request->source_language);
-            }
-
-            if ($request->has('target_language')) {
-                $query->where('target_language', $request->target_language);
-            }
-
-            if ($request->has('date_from')) {
-                $query->whereDate('created_at', '>=', $request->date_from);
-            }
-
-            if ($request->has('date_to')) {
-                $query->whereDate('created_at', '<=', $request->date_to);
-            }
-
-            $perPage = $request->get('per_page', 20);
-            $translations = $query->paginate($perPage);
-
-            return response()->json([
-                'success' => true,
-                'data' => $translations->items(),
-                'pagination' => [
-                    'current_page' => $translations->currentPage(),
-                    'per_page' => $translations->perPage(),
-                    'total' => $translations->total(),
-                    'last_page' => $translations->lastPage(),
-                    'has_next_page' => $translations->hasMorePages(),
-                    'has_prev_page' => $translations->currentPage() > 1
-                ]
-            ]);
-        } catch (\Exception $e) {
-            Log::error('Error fetching translation history: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Error fetching translation history: ' . $e->getMessage()
             ], 500);
         }
     }
