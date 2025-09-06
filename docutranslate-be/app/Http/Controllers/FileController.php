@@ -50,7 +50,7 @@ class FileController extends Controller
 
             // Create database record
             $fileRecord = File::create([
-                'user_id' => Auth::id(),
+                'user_id' => Auth::id(), // Will be null for anonymous uploads
                 'original_name' => $originalName,
                 'file_name' => $filename,
                 'file_path' => $path,
@@ -198,12 +198,18 @@ class FileController extends Controller
         }
 
         // Check if user can update this file
-        if (!Auth::user()->isAdmin() && $file->user_id !== Auth::id()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Unauthorized access'
-            ], 403);
+        // Allow updates for anonymous files (user_id is null) or if user owns the file or is admin
+        $user = Auth::user();
+        if ($file->user_id !== null) {
+            // File has an owner, check authorization
+            if (!$user || (!$user->isAdmin() && $file->user_id !== $user->id)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized access'
+                ], 403);
+            }
         }
+        // Anonymous files (user_id = null) can be updated by anyone
 
         $oldStatus = $file->status;
         $file->update($request->only(['status', 'translation_accuracy']));

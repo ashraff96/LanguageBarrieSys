@@ -36,6 +36,13 @@ Route::get('/health', function () {
 Route::post('/translate', [TranslationController::class, 'translateText']);
 Route::post('/download-formatted', [TranslationController::class, 'downloadFormatted']);
 
+// Public translation storage (for document translator)
+Route::post('/translations', [TranslationController::class, 'store']);
+
+// Public file upload and status update (for document translator)
+Route::post('/files/upload', [FileController::class, 'upload']);
+Route::patch('/files/{file}/status', [FileController::class, 'updateStatus']);
+
 // Public test endpoint for translation stats
 Route::get('/test-translation-stats', function() {
     try {
@@ -82,7 +89,6 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Translation routes
     Route::prefix('translations')->group(function () {
-        Route::post('/', [TranslationController::class, 'store']);
         Route::post('/translate', [TranslationController::class, 'translateText']);
         Route::get('/stats', [TranslationController::class, 'getStats']);
         Route::get('/history', [TranslationController::class, 'getHistory']);
@@ -104,11 +110,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // File management routes
     Route::middleware(['auth:sanctum'])->group(function () {
-        Route::post('/files/upload', [FileController::class, 'upload']);
         Route::get('/files', [FileController::class, 'index']);
         Route::get('/files/stats', [FileController::class, 'stats']);
         Route::get('/files/{file}', [FileController::class, 'show']);
-        Route::patch('/files/{file}/status', [FileController::class, 'updateStatus']);
         Route::delete('/files/{file}', [FileController::class, 'destroy']);
         Route::get('/files/{file}/download', [FileController::class, 'download']);
     });

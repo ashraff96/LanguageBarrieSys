@@ -378,11 +378,19 @@ const DocumentTranslator = () => {
         
         showToast("Download Started", "Translation downloaded successfully");
       } else {
-        throw new Error('Download failed');
+        // Try to get error message from response
+        let errorMessage = 'Download failed';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch (e) {
+          // If can't parse JSON, use default message
+        }
+        throw new Error(`Download failed (${response.status}): ${errorMessage}`);
       }
     } catch (error) {
       console.error('Download error:', error);
-      // Fallback to client-side generation for txt files
+      // Fallback to client-side generation for txt files only
       if (downloadFormat === 'txt') {
         const element = document.createElement('a');
         const file = new Blob([translatedText], { type: 'text/plain' });
@@ -393,7 +401,8 @@ const DocumentTranslator = () => {
         document.body.removeChild(element);
         showToast("Download Started", "Translation downloaded successfully");
       } else {
-        showToast("Download Failed", "Could not generate " + downloadFormat.toUpperCase() + " file", "error");
+        // For PDF and DOC, show specific error since client-side generation is not available
+        showToast("Download Failed", `Could not generate ${downloadFormat.toUpperCase()} file. Please try again or use TXT format.`, "error");
       }
     }
   }, [translatedText, downloadFormat, showToast]);
@@ -555,8 +564,8 @@ const DocumentTranslator = () => {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="txt">TXT</SelectItem>
-                          <SelectItem value="doc">DOC</SelectItem>
                         <SelectItem value="pdf">PDF</SelectItem>
+                        <SelectItem value="doc">DOC</SelectItem>
                       </SelectContent>
                     </Select>
                       <Button onClick={handleDownload} variant="outline">
